@@ -1,9 +1,9 @@
 # Employee Leave Management System — Sprint Plan
 
-**Sprint cadence:** 2.5 days per sprint (half a work-week)
+**Sprint cadence:** 2.5 days per sprint (half a work-week); Sprint 2.5 is a short 0.5-day non-blocking cleanup sprint inserted after Sprint 2's review
 **Team:** Solo developer with AI augmentation
-**Total sprints:** 8
-**Timeline:** 20 working days (~4 weeks) — Days 1 through 20
+**Total sprints:** 9 (including Sprint 2.5 cleanup)
+**Timeline:** 20.5 working days (~4 weeks) — Days 1 through 20.5
 **Source:** `docs/prd.md` (no SDD; PRD §8 provides the technical grounding)
 **Stack:** ASP.NET Core (MVC / Razor Pages), C#, PostgreSQL via EF Core (Npgsql), ASP.NET Core Identity
 
@@ -88,7 +88,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 2 — Authentication & Authorization (Days 2.5–5) [IN PROGRESS]
+## Sprint 2 — Authentication & Authorization (Days 2.5–5) [DONE]
 
 **Goal:** Users log in/out with email + password, roles are enforced across the app, and HR can reset passwords.
 
@@ -101,10 +101,10 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** ASP.NET Core Identity over the existing `User` entity (or Identity user extended with domain fields); password hashing via Identity defaults; cookie-based session.
 
 **Acceptance criteria:**
-- [ ] User can log in with a valid email/password and is rejected with a clear message on invalid credentials.
-- [ ] Passwords are stored only as secure hashes (verified by inspecting the DB — no plaintext).
-- [ ] User can log out; the session is invalidated afterward.
-- [ ] Deactivated (`IsActive = false`) users cannot log in.
+- [x] User can log in with a valid email/password and is rejected with a clear message on invalid credentials.
+- [x] Passwords are stored only as secure hashes (verified by inspecting the DB — no plaintext).
+- [x] User can log out; the session is invalidated afterward.
+- [x] Deactivated (`IsActive = false`) users cannot log in.
 
 ### S2-2 — Roles & authorization
 
@@ -113,26 +113,59 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** Three roles — Employee, Manager, HR. Everyone is also an employee (has balances, can apply). Use policy/role-based authorization on controllers/pages; role-aware navigation and landing.
 
 **Acceptance criteria:**
-- [ ] Roles Employee, Manager, HR exist and are assigned to seeded users.
-- [ ] Every controller action / page enforces authorization server-side (unauthenticated → login; unauthorized role → forbidden).
-- [ ] Navigation and landing content adapt to the current user's role(s).
-- [ ] A negative test confirms an Employee cannot reach HR-only or manager-only actions by direct URL.
+- [x] Roles Employee, Manager, HR exist and are assigned to seeded users.
+- [x] Every controller action / page enforces authorization server-side (unauthenticated → login; unauthorized role → forbidden).
+- [x] Navigation and landing content adapt to the current user's role(s).
+- [x] A negative test confirms an Employee cannot reach HR-only or manager-only actions by direct URL. <!-- Verified against the HR-only reset-password action; no manager-only action exists yet (Sprint 5). Reviewer accepted this as a reasonable scope substitution. -->
 
 ### S2-3 — HR-assisted password reset
 
 *As HR, I want to reset a user's password so that people who forget theirs can regain access without email notifications.*
 
 **Acceptance criteria:**
-- [ ] HR can set a new password for any active user from an HR screen.
-- [ ] The affected user can log in with the new password; the old one no longer works.
-- [ ] Action is HR-only and enforced server-side.
+- [x] HR can set a new password for any active user from an HR screen.
+- [x] The affected user can log in with the new password; the old one no longer works.
+- [x] Action is HR-only and enforced server-side.
 
 **Definition of Done:**
-- [ ] A seeded HR user logs in, an Employee logs in, role restrictions hold, and HR can reset another user's password.
+- [x] A seeded HR user logs in, an Employee logs in, role restrictions hold, and HR can reset another user's password.
 
 ---
 
-## Sprint 3 — HR Administration (Days 5–7.5) [NOT STARTED]
+## Sprint 2.5 — Non-blocking Cleanup (Days 5–5.5) [IN PROGRESS]
+
+**Goal:** Address non-blocking findings from the Sprint 2 review before starting HR administration — small, well-scoped fixes and test-coverage gaps identified by the reviewer, none of which blocked merge but which should not be left to drift.
+
+**Dependencies:** Sprint 2 (merged)
+
+### Stories
+
+#### S2.5-1: Fix dead validation attribute and cover missing test paths
+**Context:** Reviewer found `ResetPasswordViewModel.UserId`'s `[Required(ErrorMessage = "Select a user.")]` attribute is dead code — `UserId` is a non-nullable `Guid`, so `[Required]` never fails on it. Submitting the placeholder `-- select a user --` option (empty string) actually fails at model-binding time with MVC's generic type-conversion error instead of the intended "Select a user." message. Not a security/correctness bug (the form is still rejected either way), just the wrong UX message. Also flagged: no test exists for the Manager-role branch of `Home/Index.cshtml` (`else if (User.IsInRole(Roles.Manager))`), and no test exists for `HrController.ResetPassword`'s "no user selected" (empty GUID) submission path.
+- [ ] Make `ResetPasswordViewModel.UserId` nullable (`Guid?`) or otherwise handle the empty-selection case explicitly so the "Select a user." message actually surfaces.
+- [ ] Add a test asserting the Manager-role landing-page branch renders correctly for a Manager user.
+- [ ] Add a test covering `HrController.ResetPassword` submitted with no user selected.
+
+#### S2.5-2: Add CSRF-rejection test coverage
+**Context:** Reviewer noted that every existing form-submission test fetches a valid antiforgery token first, but nothing verifies that a POST to `/Account/Login`, `/Account/Logout`, or `/Hr/ResetPassword` with a missing/invalid `__RequestVerificationToken` is actually rejected. The PRD's NFR explicitly requires CSRF protection; these controllers currently rely on framework defaults with no regression coverage, so a future change (e.g., an accidental `[IgnoreAntiforgeryToken]`) could silently disable it.
+- [ ] Add a test per POST action (`/Account/Login`, `/Account/Logout`, `/Hr/ResetPassword`) asserting a request with a missing or invalid antiforgery token is rejected.
+
+#### S2.5-3: Fix HomeController.Error authorization and login redirect
+**Context:** `HomeController.Error` inherits the class-level `[Authorize]` added in Sprint 2. If an unhandled exception occurs for an anonymous request (e.g., inside `AccountController` before sign-in), `UseExceptionHandler("/Home/Error")` redirects to an action that now requires authentication, bouncing the user to the login page instead of showing a friendly error page — masking the real failure. Separately, reviewer noted `GET /Account/Login` does not redirect an already-authenticated user back to home; harmless today but can be confusing.
+- [ ] Add `[AllowAnonymous]` to `HomeController.Error` so anonymous requests see the friendly error page instead of a login redirect.
+- [ ] Redirect an already-authenticated user hitting `GET /Account/Login` to the home page instead of showing the login form.
+
+#### S2.5-4: Sprint 1 backlog carryover — container naming and seeder test coverage
+**Context:** Two items from the Sprint 1 review backlog are ready to action now rather than continue accumulating. The `leave-postgres` container name in `docker-compose.yml` is hardcoded, so a second checkout of the repo (e.g. a `git worktree` used for parallel branch work) fails `docker compose up -d db` with a container-name collision. Separately, `DataSeeder.EnsureRolesAsync`/`EnsureUserAsync`/`EnsurePolicyAsync` have `InvalidOperationException` throw paths (triggered when an ASP.NET Core Identity operation fails) that are currently untested.
+- [ ] Derive the Postgres container name in `docker-compose.yml` from the project/directory or an environment variable so parallel checkouts (worktrees) don't collide.
+- [ ] Add test coverage for the `InvalidOperationException` throw paths in `DataSeeder.EnsureRolesAsync`, `EnsureUserAsync`, and `EnsurePolicyAsync`.
+
+**Definition of Done:**
+- [ ] All Sprint 2.5 test additions pass in CI; the dead-code validation fix and both authorization fixes are verified manually and by test.
+
+---
+
+## Sprint 3 — HR Administration (Days 5.5–8) [NOT STARTED]
 
 **Goal:** HR can fully configure the organization — create/manage employees, assign each a manager, and set annual quotas per leave type. This must precede leave application, which depends on users, managers, and quotas existing.
 
@@ -188,7 +221,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 4 — Leave Application & Balance Engine (Days 7.5–10) [NOT STARTED]
+## Sprint 4 — Leave Application & Balance Engine (Days 8–10.5) [NOT STARTED]
 
 **Goal:** Employees can submit leave requests with correct working-day/half-day counting and balance reservation. This is the core value and holds the trickiest logic — it gets a dedicated sprint.
 
@@ -244,7 +277,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 5 — Approval Workflow (Days 10–12.5) [NOT STARTED]
+## Sprint 5 — Approval Workflow (Days 10.5–13) [NOT STARTED]
 
 **Goal:** Managers approve/reject their reports' requests with correct balance transitions; manager-less requests fall back to HR.
 
@@ -297,7 +330,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 6 — Self-Service: Balances, History, Cancel & Withdraw (Days 12.5–15) [NOT STARTED]
+## Sprint 6 — Self-Service: Balances, History, Cancel & Withdraw (Days 13–15.5) [NOT STARTED]
 
 **Goal:** Employees can see their balances and history and can cancel pending or withdraw approved future-dated requests with correct balance restoration.
 
@@ -348,7 +381,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 7 — HR Oversight, State-Machine & Concurrency Hardening (Days 15–17.5) [NOT STARTED]
+## Sprint 7 — HR Oversight, State-Machine & Concurrency Hardening (Days 15.5–18) [NOT STARTED]
 
 **Goal:** Close correctness gaps — HR company-wide visibility (P1), strict enforcement of the request state machine, and balance concurrency safety — plus responsive/accessibility polish.
 
@@ -399,7 +432,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 8 — Hardening, Security Review, Testing & Launch (Days 17.5–20) [NOT STARTED]
+## Sprint 8 — Hardening, Security Review, Testing & Launch (Days 18–20.5) [NOT STARTED]
 
 **Goal:** Ship a tested, secure, deployable MVP.
 
@@ -444,17 +477,18 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 | Sprint | Days | Focus | Key Output | Status |
 |--------|------|-------|------------|--------|
 | 1 | 1–2.5 | Foundation & data model | Running app + PostgreSQL + schema/migrations + seeded HR | ✅ |
-| 2 | 2.5–5 | Auth & authorization | Login/logout, roles enforced, HR password reset | 🟨 |
-| 3 | 5–7.5 | HR administration | Employee CRUD, manager assignment, annual quotas | ⬜ |
-| 4 | 7.5–10 | Leave application & balance engine | Working-day calc, balance reservation, request submission | ⬜ |
-| 5 | 10–12.5 | Approval workflow | Manager queue, approve/reject, HR fallback | ⬜ |
-| 6 | 12.5–15 | Self-service | Balances/history, cancel, withdraw-with-restore | ⬜ |
-| 7 | 15–17.5 | Oversight & hardening | HR company view, state-machine/concurrency safety, responsive polish | ⬜ |
-| 8 | 17.5–20 | Testing, security & launch | E2E tests, security review, deploy runbook, smoke test | ⬜ |
+| 2 | 2.5–5 | Auth & authorization | Login/logout, roles enforced, HR password reset | ✅ |
+| 2.5 | 5–5.5 | Non-blocking cleanup | Sprint 2 review follow-ups: dead-code fix, CSRF/manager-landing/no-user-selected tests, HomeController.Error + login-redirect fixes | 🟨 |
+| 3 | 5.5–8 | HR administration | Employee CRUD, manager assignment, annual quotas | ⬜ |
+| 4 | 8–10.5 | Leave application & balance engine | Working-day calc, balance reservation, request submission | ⬜ |
+| 5 | 10.5–13 | Approval workflow | Manager queue, approve/reject, HR fallback | ⬜ |
+| 6 | 13–15.5 | Self-service | Balances/history, cancel, withdraw-with-restore | ⬜ |
+| 7 | 15.5–18 | Oversight & hardening | HR company view, state-machine/concurrency safety, responsive polish | ⬜ |
+| 8 | 18–20.5 | Testing, security & launch | E2E tests, security review, deploy runbook, smoke test | ⬜ |
 
 ## Critical dependency path
 
-`S1 (foundation) → S2 (auth) → S3 (HR setup: users, managers, quotas) → S4 (apply + balance) → S5 (approve) → S6 (cancel/withdraw) → S7 (hardening) → S8 (launch)`
+`S1 (foundation) → S2 (auth) → S2.5 (non-blocking cleanup) → S3 (HR setup: users, managers, quotas) → S4 (apply + balance) → S5 (approve) → S6 (cancel/withdraw) → S7 (hardening) → S8 (launch)`
 
 HR administration (S3) is intentionally **before** leave application (S4): you cannot apply for leave without a user, an assigned manager, and a quota to draw against.
 
@@ -484,6 +518,12 @@ _None yet._
 ### Improvements
 Concrete items with clear implementation direction. Will be triaged into a cleanup sprint periodically.
 
-- [ ] **(Sprint 1)** Parameterize/namespace the `leave-postgres` container name in `docker-compose.yml` — it's currently hardcoded, so a second checkout of the repo (e.g., via `git worktree`, used for parallel branch work) will fail `docker compose up -d db` with a container-name collision. Derive the name from the project/directory or an env var.
-- [ ] **(Sprint 1)** Add test coverage for the `InvalidOperationException` throw paths in `DataSeeder.EnsureRolesAsync`/`EnsureUserAsync`/`EnsurePolicyAsync` (triggered when an ASP.NET Core Identity operation fails) — currently untested; low risk under normal seeded data but worth covering.
-- [ ] **(Sprint 1)** Carry the `Seed:HrPassword` production-override requirement into Sprint 8's security review (S8-2) as an explicit checklist item — `appsettings.json` ships a real default (`ChangeMe123!`) that would create a publicly-known-password HR account if a production deploy forgot to override `Seed__HrPassword`. Currently this is only called out in the README; make sure S8-2 verifies the override actually happens before launch.
+- [x] **(Sprint 1)** Parameterize/namespace the `leave-postgres` container name in `docker-compose.yml` — it's currently hardcoded, so a second checkout of the repo (e.g., via `git worktree`, used for parallel branch work) will fail `docker compose up -d db` with a container-name collision. Derive the name from the project/directory or an env var. — _Triaged into Sprint 2.5 — Non-blocking Cleanup._
+- [x] **(Sprint 1)** Add test coverage for the `InvalidOperationException` throw paths in `DataSeeder.EnsureRolesAsync`/`EnsureUserAsync`/`EnsurePolicyAsync` (triggered when an ASP.NET Core Identity operation fails) — currently untested; low risk under normal seeded data but worth covering. — _Triaged into Sprint 2.5 — Non-blocking Cleanup._
+- [ ] **(Sprint 1)** Carry the `Seed:HrPassword` production-override requirement into Sprint 8's security review (S8-2) as an explicit checklist item — `appsettings.json` ships a real default (`ChangeMe123!`) that would create a publicly-known-password HR account if a production deploy forgot to override `Seed__HrPassword`. Currently this is only called out in the README; make sure S8-2 verifies the override actually happens before launch. *(Earmarked for Sprint 8 S8-2, not immediate cleanup.)*
+- [x] **(Sprint 2)** `ResetPasswordViewModel.UserId`'s `[Required]` attribute is dead code on a non-nullable `Guid` — never fails validation; empty-selection submission instead fails at model-binding with a generic error, not the intended "Select a user." message. Fix by making it nullable or handling empty selection explicitly. — _Triaged into Sprint 2.5 — Non-blocking Cleanup._
+- [x] **(Sprint 2)** No test verifies CSRF-token rejection (missing/invalid `__RequestVerificationToken`) on `/Account/Login`, `/Account/Logout`, or `/Hr/ResetPassword` — a regression (e.g. accidental `[IgnoreAntiforgeryToken]`) would go undetected. — _Triaged into Sprint 2.5 — Non-blocking Cleanup._
+- [x] **(Sprint 2)** No test covers the Manager-role landing-page branch (`Home/Index.cshtml`, `else if (User.IsInRole(Roles.Manager))`) or the `HrController.ResetPassword` "no user selected" (empty GUID) submission path. — _Triaged into Sprint 2.5 — Non-blocking Cleanup._
+- [x] **(Sprint 2)** `HomeController.Error` inherits the class-level `[Authorize]` added this sprint — an unhandled exception on an anonymous request (e.g. inside `AccountController` pre-sign-in) redirects to login instead of showing the friendly error page, masking the real failure. Also, `GET /Account/Login` doesn't redirect an already-authenticated user back to home. — _Triaged into Sprint 2.5 — Non-blocking Cleanup._
+- [ ] **(Sprint 2)** No brute-force/lockout protection on login — `AccountController.Login` calls `PasswordSignInAsync(..., lockoutOnFailure: false)`, so failed attempts never increment `AccessFailedCount` and Identity's default lockout never engages, allowing unlimited password guesses against a known email. Low severity; reviewer explicitly flagged this for Sprint 8's security review (S8-2), not immediate action. *(Earmarked for Sprint 8 S8-2.)*
+- [ ] **(Sprint 2)** No explicit cookie hardening (`CookieSecurePolicy.Always`, explicit `HttpOnly`) in `ConfigureApplicationCookie` — ASP.NET Core's defaults are already reasonable, but reviewer suggested making it explicit. Reviewer flagged this for Sprint 8's security review (S8-2). *(Earmarked for Sprint 8 S8-2.)*
