@@ -221,7 +221,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 4 — Leave Application & Balance Engine (Days 8–10.5) [IN PROGRESS]
+## Sprint 4 — Leave Application & Balance Engine (Days 8–10.5) [DONE]
 
 **Goal:** Employees can submit leave requests with correct working-day/half-day counting and balance reservation. This is the core value and holds the trickiest logic — it gets a dedicated sprint.
 
@@ -234,9 +234,9 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** A single, unit-tested utility computing chargeable days between start and end dates: count Mon–Fri only; a half-day flag on the start and/or end date subtracts 0.5 each. No public-holiday calendar in v1. Centralize here so submission, approval, and balance logic all agree.
 
 **Acceptance criteria:**
-- [ ] Utility returns correct counts for: single full day, multi-day span including a weekend, a Fri→Mon span, and half-day on start/end.
-- [ ] A range consisting only of weekend days yields 0 chargeable days and is rejected upstream as invalid.
-- [ ] Unit tests cover all above boundary cases and pass.
+- [x] Utility returns correct counts for: single full day, multi-day span including a weekend, a Fri→Mon span, and half-day on start/end.
+- [x] A range consisting only of weekend days yields 0 chargeable days and is rejected upstream as invalid.
+- [x] Unit tests cover all above boundary cases and pass.
 
 ### S4-2 — Balance calculation service
 
@@ -245,10 +245,10 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** Remaining = allocated quota − (Approved + Pending chargeable days) for that employee × type × year. Pending requests **reserve** balance. Unpaid is uncapped and never reduces a balance. All mutations run inside DB transactions.
 
 **Acceptance criteria:**
-- [ ] Remaining balance per type computed correctly given a mix of Approved and Pending requests.
-- [ ] Pending requests reduce remaining balance (reservation); Unpaid never affects any balance.
-- [ ] Service reads and computes within a transaction to avoid stale reads.
-- [ ] Unit/integration tests verify balance math across states.
+- [x] Remaining balance per type computed correctly given a mix of Approved and Pending requests.
+- [x] Pending requests reduce remaining balance (reservation); Unpaid never affects any balance.
+- [x] Service reads and computes within a transaction to avoid stale reads. <!-- Reviewer confirmed met, with a caveat: on the nested/ambient-transaction path (BalanceService called from LeaveRequestService.SubmitAsync), the code comment overclaims a RepeatableRead "consistent snapshot" guarantee that doesn't actually hold, since the ambient transaction has no isolation level specified (defaults to Read Committed). Narrow window, squarely within the concurrency-hardening work already deferred to Sprint 7 (S7-2); not treated as an unmet AC. Tracked in Non-blocking Review Backlog (Sprint 4). -->
+- [x] Unit/integration tests verify balance math across states.
 
 ### S4-3 — Leave request submission
 
@@ -257,27 +257,27 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** Form captures type, start/end dates, start/end half-day flags, optional reason. Validations: end ≥ start; dates not in the past; **no cross-calendar-year spans**; sufficient remaining balance for Annual/Medical (Unpaid exempt). On submit → `Pending` and balance reserved.
 
 **Acceptance criteria:**
-- [ ] Employee can submit a valid request; it appears as `Pending` and reserves the correct chargeable days.
-- [ ] Submission is rejected with clear messages for: end before start, past dates, cross-year span, and insufficient balance (Annual/Medical).
-- [ ] Unpaid requests submit regardless of balance and reserve no balance.
-- [ ] Users of any role (Employee/Manager/HR) can submit their own requests.
+- [x] Employee can submit a valid request; it appears as `Pending` and reserves the correct chargeable days.
+- [x] Submission is rejected with clear messages for: end before start, past dates, cross-year span, and insufficient balance (Annual/Medical).
+- [x] Unpaid requests submit regardless of balance and reserve no balance.
+- [x] Users of any role (Employee/Manager/HR) can submit their own requests.
 
 ### S4-4 — Playwright coverage: leave application
 
 *As the team, I want browser-based coverage of the leave application flow so that regressions in the trickiest logic (working-day/balance math) surface at the UI level too.*
 
 **Acceptance criteria:**
-- [ ] E2E test: employee submits an Annual request spanning a weekend and sees the correct chargeable-day count and reserved balance reflected in the UI.
-- [ ] E2E test: employee submission is blocked in the UI with a clear message for insufficient balance and for a cross-year span.
-- [ ] Playwright suite (cumulative with Sprint 3's) passes in CI.
+- [x] E2E test: employee submits an Annual request spanning a weekend and sees the correct chargeable-day count and reserved balance reflected in the UI.
+- [x] E2E test: employee submission is blocked in the UI with a clear message for insufficient balance and for a cross-year span. <!-- Implemented as two focused specs rather than one; reviewer accepted this as a reasonable reading of the AC. -->
+- [x] Playwright suite (cumulative with Sprint 3's) passes in CI.
 
 **Definition of Done:**
-- [ ] An employee submits Annual, Medical, and Unpaid requests; day counts and balance reservations are correct; invalid inputs are blocked.
-- [ ] Playwright leave-application suite passes in CI.
+- [x] An employee submits Annual, Medical, and Unpaid requests; day counts and balance reservations are correct; invalid inputs are blocked.
+- [x] Playwright leave-application suite passes in CI.
 
 ---
 
-## Sprint 5 — Approval Workflow (Days 10.5–13) [NOT STARTED]
+## Sprint 5 — Approval Workflow (Days 10.5–13) [IN PROGRESS]
 
 **Goal:** Managers approve/reject their reports' requests with correct balance transitions; manager-less requests fall back to HR.
 
@@ -480,8 +480,8 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 | 2 | 2.5–5 | Auth & authorization | Login/logout, roles enforced, HR password reset | ✅ |
 | 2.5 | 5–5.5 | Non-blocking cleanup | Sprint 2 review follow-ups: dead-code fix, CSRF/manager-landing/no-user-selected tests, HomeController.Error + login-redirect fixes | ✅ |
 | 3 | 5.5–8 | HR administration | Employee CRUD, manager assignment, annual quotas | ✅ |
-| 4 | 8–10.5 | Leave application & balance engine | Working-day calc, balance reservation, request submission | 🟨 |
-| 5 | 10.5–13 | Approval workflow | Manager queue, approve/reject, HR fallback | ⬜ |
+| 4 | 8–10.5 | Leave application & balance engine | Working-day calc, balance reservation, request submission | ✅ |
+| 5 | 10.5–13 | Approval workflow | Manager queue, approve/reject, HR fallback | 🟨 |
 | 6 | 13–15.5 | Self-service | Balances/history, cancel, withdraw-with-restore | ⬜ |
 | 7 | 15.5–18 | Oversight & hardening | HR company view, state-machine/concurrency safety, responsive polish | ⬜ |
 | 8 | 18–20.5 | Testing, security & launch | E2E tests, security review, deploy runbook, smoke test | ⬜ |
@@ -530,3 +530,5 @@ Concrete items with clear implementation direction. Will be triaged into a clean
 - [ ] **(Sprint 2.5)** `tests/LeaveAutopilot.Tests/Infrastructure/FailingIdentityStores.cs`'s `RoleAssignmentFailingUserStore` subclasses the real EF Core `UserStore<...>` and overrides only `UpdateAsync`, relying on the internal detail that `UserManager.AddToRoleAsync` calls `UpdateAsync` to persist. If a future Identity version changes that internal call sequence, the test would silently stop covering the throw path (it would pass without exercising the intended branch, rather than failing loudly). Reviewer suggested either a code comment flagging this coupling, or a lighter-weight fake `IUserStore` that doesn't depend on `UserManager`'s internal call sequence.
 - [ ] **(Sprint 3)** `HrController.CreateEmployee`'s compensating `DeleteAsync(user)` (`HrController.cs:147`, added in the cycle-2 fix for the role-assignment data-integrity bug) doesn't check its own result. If `AddToRoleAsync` fails for an unexpected Identity-level reason *and* the compensating `DeleteAsync` also fails, the original orphaned-roleless-account symptom could still occur — now behind two independent failures instead of one. Vanishingly unlikely (the realistic failure mode, an invalid role string, is fully closed by the up-front `Roles.All` validation) and explicitly flagged by the reviewer as non-blocking. To fully close the loop: check `deleteResult.Succeeded` and log/surface a distinct error on double-failure.
 - [ ] **(Sprint 3)** `LoginAsync`/`LoginAsHrAsync` test helper methods are copy-pasted verbatim across 8 test files (`AuthenticationTests`, `AuthorizationTests`, `CsrfProtectionTests`, `HomePageTests`, `HomeErrorAndLoginRedirectTests`, `HrPasswordResetTests`, plus the 3 new Sprint 3 HR test classes — `HrEmployeeManagementTests`, `HrManagerAssignmentTests`, `HrQuotaManagementTests`). The implementer deliberately left this out of the Sprint 3 PR (extracting for just the 3 new files would be inconsistent with the other 5, and a repo-wide extraction was out of scope for that PR) and flagged it as a dedicated follow-up. Extract a shared login helper (e.g., a common test base class or static helper) used by all 8 test files.
+- [ ] **(Sprint 4)** `BalanceService.GetRemainingBalanceAsync`'s code comment overclaims a `RepeatableRead` "consistent snapshot" guarantee. It only opens its own `RepeatableRead` transaction when it *owns* the transaction; when called from `LeaveRequestService.SubmitAsync` (the actual submission path), it reuses the ambient transaction instead — which `LeaveRequestService` opens via `BeginTransactionAsync(cancellationToken)` with no isolation level specified (Npgsql/Postgres defaults to Read Committed). Under Read Committed, the two back-to-back reads inside `GetRemainingBalanceAsync` aren't guaranteed a single consistent point-in-time view, so a concurrent write landing between them could produce a torn read. Reviewer flagged this as non-blocking — it sits squarely inside the concurrency-hardening work already scoped to Sprint 7 (S7-2) — but the comment should either note the caveat on the nested path, or `LeaveRequestService.SubmitAsync` should open its own transaction at `RepeatableRead` so the guarantee is uniform regardless of call path. Fold into S7-2's concurrency-hardening work rather than treating as a standalone fix.
+- [ ] **(Sprint 4)** The single-day double-half-day guard in `LeaveRequestService` (rejecting a one-day request with both `StartHalfDay` and `EndHalfDay` set) is unit- and service-tested but not covered at the controller/web layer or in Playwright. Low risk since the service-layer test exercises the same code path the controller calls into, but worth a one-line controller test in a future cleanup pass.
