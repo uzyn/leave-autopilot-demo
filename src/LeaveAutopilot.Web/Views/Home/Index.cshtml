@@ -7,7 +7,11 @@
 
     @if (User.IsInRole(Roles.Hr))
     {
-        <p>You're signed in as <strong>HR</strong>. You can <a asp-controller="Hr" asp-action="ResetPassword">reset a user's password</a>.</p>
+        <p>
+            You're signed in as <strong>HR</strong>. You can
+            <a asp-controller="Hr" asp-action="Employees">manage employees</a> or
+            <a asp-controller="Hr" asp-action="ResetPassword">reset a user's password</a>.
+        </p>
     }
     else if (User.IsInRole(Roles.Manager))
     {

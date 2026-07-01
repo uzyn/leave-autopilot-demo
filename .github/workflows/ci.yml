@@ -58,3 +58,35 @@ jobs:
         with:
           name: test-results
           path: TestResults
+
+  playwright:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate local HTTPS dev certificate
+        run: ./scripts/generate-dev-cert.sh
+
+      - name: Build and start app + Postgres (docker compose)
+        run: docker compose up -d --build --wait db app
+
+      - name: Run Playwright suite (headless, in Docker)
+        run: docker compose run --rm playwright bash -c "npm ci && npx playwright test"
+
+      - name: Show app logs on failure
+        if: failure()
+        run: docker compose logs app
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          if-no-files-found: ignore
+
+      - name: Tear down docker compose stack
+        if: always()
+        run: docker compose down -v
