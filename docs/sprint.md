@@ -31,7 +31,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 1 — Foundation & Data Model (Days 1–2.5)
+## Sprint 1 — Foundation & Data Model (Days 1–2.5) [IN PROGRESS]
 
 **Goal:** Stand up a running ASP.NET Core app wired to PostgreSQL with the full domain schema, migrations, and seed data — the foundation everything else builds on.
 
@@ -70,12 +70,24 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 - [ ] Dev seed optionally creates a few sample employees, a manager, and quotas for local testing.
 - [ ] Seeding is documented and does not run destructively against existing data.
 
+### S1-4 — Continuous integration (GitHub Actions)
+
+*As the team, I want automated CI so that every PR is built and tested before merge.*
+
+**Technical context:** GitHub Actions workflow triggered on pull requests (and pushes to `main`): restore/build the solution, run `dotnet test`, and (if practical) spin up PostgreSQL as a service container for integration tests.
+
+**Acceptance criteria:**
+- [ ] `.github/workflows/ci.yml` builds the solution and runs the test suite on every PR.
+- [ ] CI fails the check when a build error or test failure occurs.
+- [ ] Workflow uses a PostgreSQL service container (or equivalent) if any tests need a live database.
+
 **Definition of Done:**
 - [ ] App boots, migrates a fresh DB, seeds the HR account, and serves the landing page over HTTPS.
+- [ ] CI workflow runs on pull requests and passes on this sprint's own PR.
 
 ---
 
-## Sprint 2 — Authentication & Authorization (Days 2.5–5)
+## Sprint 2 — Authentication & Authorization (Days 2.5–5) [NOT STARTED]
 
 **Goal:** Users log in/out with email + password, roles are enforced across the app, and HR can reset passwords.
 
@@ -119,7 +131,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 3 — HR Administration (Days 5–7.5)
+## Sprint 3 — HR Administration (Days 5–7.5) [NOT STARTED]
 
 **Goal:** HR can fully configure the organization — create/manage employees, assign each a manager, and set annual quotas per leave type. This must precede leave application, which depends on users, managers, and quotas existing.
 
@@ -162,7 +174,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 4 — Leave Application & Balance Engine (Days 7.5–10)
+## Sprint 4 — Leave Application & Balance Engine (Days 7.5–10) [NOT STARTED]
 
 **Goal:** Employees can submit leave requests with correct working-day/half-day counting and balance reservation. This is the core value and holds the trickiest logic — it gets a dedicated sprint.
 
@@ -208,7 +220,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 5 — Approval Workflow (Days 10–12.5)
+## Sprint 5 — Approval Workflow (Days 10–12.5) [NOT STARTED]
 
 **Goal:** Managers approve/reject their reports' requests with correct balance transitions; manager-less requests fall back to HR.
 
@@ -250,7 +262,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 6 — Self-Service: Balances, History, Cancel & Withdraw (Days 12.5–15)
+## Sprint 6 — Self-Service: Balances, History, Cancel & Withdraw (Days 12.5–15) [NOT STARTED]
 
 **Goal:** Employees can see their balances and history and can cancel pending or withdraw approved future-dated requests with correct balance restoration.
 
@@ -291,7 +303,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 7 — HR Oversight, State-Machine & Concurrency Hardening (Days 15–17.5)
+## Sprint 7 — HR Oversight, State-Machine & Concurrency Hardening (Days 15–17.5) [NOT STARTED]
 
 **Goal:** Close correctness gaps — HR company-wide visibility (P1), strict enforcement of the request state machine, and balance concurrency safety — plus responsive/accessibility polish.
 
@@ -332,7 +344,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 8 — Hardening, Security Review, Testing & Launch (Days 17.5–20)
+## Sprint 8 — Hardening, Security Review, Testing & Launch (Days 17.5–20) [NOT STARTED]
 
 **Goal:** Ship a tested, secure, deployable MVP.
 
