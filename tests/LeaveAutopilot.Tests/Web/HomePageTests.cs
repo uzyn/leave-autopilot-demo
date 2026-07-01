@@ -52,4 +52,24 @@ public class HomePageTests : IClassFixture<WebApplicationFactory<Program>>
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Welcome", body);
     }
+
+    // S2.5-1: no test previously covered the Manager-role branch of Home/Index.cshtml
+    // (`else if (User.IsInRole(Roles.Manager))`) — only the HR and default/Employee branches
+    // were exercised.
+    [Fact]
+    public async Task GetHome_ForManager_RendersManagerBranch()
+    {
+        var email = $"home-manager-{Guid.NewGuid():N}@leaveautopilot.local";
+        const string password = "Password123!";
+        await TestUserFactory.CreateUserAsync(_factory.Services, email, password, Roles.Manager);
+
+        var client = _factory.CreateClient();
+        var response = await LoginAsync(client, email, password);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("You're signed in as a <strong>Manager</strong>.", body);
+        Assert.DoesNotContain("signed in as <strong>HR</strong>", body);
+        Assert.DoesNotContain("signed in as an <strong>Employee</strong>", body);
+    }
 }

@@ -7,9 +7,12 @@ namespace LeaveAutopilot.Web.Models.Hr;
 /// <summary>Form model for HR resetting another user's password (S2-3).</summary>
 public class ResetPasswordViewModel
 {
+    // Nullable so an empty "-- select a user --" submission binds to null and is caught by
+    // [Required] with the intended message, instead of failing at model-binding time with
+    // MVC's generic type-conversion error for a non-nullable Guid.
     [Required(ErrorMessage = "Select a user.")]
     [Display(Name = "User")]
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     [Required]
     [DataType(DataType.Password)]

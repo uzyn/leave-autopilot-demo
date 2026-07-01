@@ -39,6 +39,11 @@ The `docker-compose.yml` `app` service mounts the repo into the container and ru
 `dotnet run`, so code changes are picked up on the next container restart
 (`docker compose restart app`).
 
+Running a second checkout in parallel (e.g. a `git worktree` for another branch)? Compose
+names containers after the current directory by default, so a differently-named checkout
+directory won't collide. If you ever do need an explicit, stable project name, pass
+`docker compose -p <name> ...` or set the `COMPOSE_PROJECT_NAME` environment variable.
+
 ### Seed data
 
 A first HR account is created on first run, idempotently (safe to restart the app

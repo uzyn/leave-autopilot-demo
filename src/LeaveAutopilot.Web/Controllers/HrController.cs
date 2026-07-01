@@ -31,7 +31,10 @@ public class HrController(UserManager<ApplicationUser> userManager) : Controller
             return View(await BuildViewModelAsync(model));
         }
 
-        var user = await userManager.Users.SingleOrDefaultAsync(u => u.Id == model.UserId && u.IsActive);
+        // ModelState.IsValid (checked above) guarantees UserId is non-null here: [Required]
+        // on the nullable Guid? rejects a missing/empty selection before we reach this line.
+        var userId = model.UserId!.Value;
+        var user = await userManager.Users.SingleOrDefaultAsync(u => u.Id == userId && u.IsActive);
         if (user is null)
         {
             ModelState.AddModelError(string.Empty, "Select an active user.");

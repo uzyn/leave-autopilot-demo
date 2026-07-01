@@ -31,6 +31,12 @@ public class HomeController : Controller
         return View();
     }
 
+    // Anonymous, even though the controller is [Authorize]: UseExceptionHandler("/Home/Error")
+    // re-executes the request pipeline for this action on any unhandled exception, including
+    // ones thrown for anonymous requests (e.g. inside AccountController before sign-in). Without
+    // this, an anonymous caller would be bounced to the login page instead of seeing a friendly
+    // error page, masking the real failure.
+    [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
