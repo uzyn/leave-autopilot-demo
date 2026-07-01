@@ -132,7 +132,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 2.5 — Non-blocking Cleanup (Days 5–5.5) [IN PROGRESS]
+## Sprint 2.5 — Non-blocking Cleanup (Days 5–5.5) [DONE]
 
 **Goal:** Address non-blocking findings from the Sprint 2 review before starting HR administration — small, well-scoped fixes and test-coverage gaps identified by the reviewer, none of which blocked merge but which should not be left to drift.
 
@@ -142,30 +142,30 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 #### S2.5-1: Fix dead validation attribute and cover missing test paths
 **Context:** Reviewer found `ResetPasswordViewModel.UserId`'s `[Required(ErrorMessage = "Select a user.")]` attribute is dead code — `UserId` is a non-nullable `Guid`, so `[Required]` never fails on it. Submitting the placeholder `-- select a user --` option (empty string) actually fails at model-binding time with MVC's generic type-conversion error instead of the intended "Select a user." message. Not a security/correctness bug (the form is still rejected either way), just the wrong UX message. Also flagged: no test exists for the Manager-role branch of `Home/Index.cshtml` (`else if (User.IsInRole(Roles.Manager))`), and no test exists for `HrController.ResetPassword`'s "no user selected" (empty GUID) submission path.
-- [ ] Make `ResetPasswordViewModel.UserId` nullable (`Guid?`) or otherwise handle the empty-selection case explicitly so the "Select a user." message actually surfaces.
-- [ ] Add a test asserting the Manager-role landing-page branch renders correctly for a Manager user.
-- [ ] Add a test covering `HrController.ResetPassword` submitted with no user selected.
+- [x] Make `ResetPasswordViewModel.UserId` nullable (`Guid?`) or otherwise handle the empty-selection case explicitly so the "Select a user." message actually surfaces.
+- [x] Add a test asserting the Manager-role landing-page branch renders correctly for a Manager user.
+- [x] Add a test covering `HrController.ResetPassword` submitted with no user selected.
 
 #### S2.5-2: Add CSRF-rejection test coverage
 **Context:** Reviewer noted that every existing form-submission test fetches a valid antiforgery token first, but nothing verifies that a POST to `/Account/Login`, `/Account/Logout`, or `/Hr/ResetPassword` with a missing/invalid `__RequestVerificationToken` is actually rejected. The PRD's NFR explicitly requires CSRF protection; these controllers currently rely on framework defaults with no regression coverage, so a future change (e.g., an accidental `[IgnoreAntiforgeryToken]`) could silently disable it.
-- [ ] Add a test per POST action (`/Account/Login`, `/Account/Logout`, `/Hr/ResetPassword`) asserting a request with a missing or invalid antiforgery token is rejected.
+- [x] Add a test per POST action (`/Account/Login`, `/Account/Logout`, `/Hr/ResetPassword`) asserting a request with a missing or invalid antiforgery token is rejected.
 
 #### S2.5-3: Fix HomeController.Error authorization and login redirect
 **Context:** `HomeController.Error` inherits the class-level `[Authorize]` added in Sprint 2. If an unhandled exception occurs for an anonymous request (e.g., inside `AccountController` before sign-in), `UseExceptionHandler("/Home/Error")` redirects to an action that now requires authentication, bouncing the user to the login page instead of showing a friendly error page — masking the real failure. Separately, reviewer noted `GET /Account/Login` does not redirect an already-authenticated user back to home; harmless today but can be confusing.
-- [ ] Add `[AllowAnonymous]` to `HomeController.Error` so anonymous requests see the friendly error page instead of a login redirect.
-- [ ] Redirect an already-authenticated user hitting `GET /Account/Login` to the home page instead of showing the login form.
+- [x] Add `[AllowAnonymous]` to `HomeController.Error` so anonymous requests see the friendly error page instead of a login redirect.
+- [x] Redirect an already-authenticated user hitting `GET /Account/Login` to the home page instead of showing the login form.
 
 #### S2.5-4: Sprint 1 backlog carryover — container naming and seeder test coverage
-**Context:** Two items from the Sprint 1 review backlog are ready to action now rather than continue accumulating. The `leave-postgres` container name in `docker-compose.yml` is hardcoded, so a second checkout of the repo (e.g. a `git worktree` used for parallel branch work) fails `docker compose up -d db` with a container-name collision. Separately, `DataSeeder.EnsureRolesAsync`/`EnsureUserAsync`/`EnsurePolicyAsync` have `InvalidOperationException` throw paths (triggered when an ASP.NET Core Identity operation fails) that are currently untested.
-- [ ] Derive the Postgres container name in `docker-compose.yml` from the project/directory or an environment variable so parallel checkouts (worktrees) don't collide.
-- [ ] Add test coverage for the `InvalidOperationException` throw paths in `DataSeeder.EnsureRolesAsync`, `EnsureUserAsync`, and `EnsurePolicyAsync`.
+**Context:** Two items from the Sprint 1 review backlog are ready to action now rather than continue accumulating. The `leave-postgres` container name in `docker-compose.yml` is hardcoded, so a second checkout of the repo (e.g. a `git worktree` used for parallel branch work) fails `docker compose up -d db` with a container-name collision. Separately, `DataSeeder.EnsureRolesAsync`/`EnsureUserAsync` have `InvalidOperationException` throw paths (triggered when an ASP.NET Core Identity operation fails) that are currently untested. *(Note: `EnsurePolicyAsync` was originally grouped with these two but, per Sprint 2.5 review, does not apply — it has no Identity call and no throw path; it's a plain EF Core existence-check-and-add. No coverage is needed there.)*
+- [x] Derive the Postgres container name in `docker-compose.yml` from the project/directory or an environment variable so parallel checkouts (worktrees) don't collide.
+- [x] Add test coverage for the `InvalidOperationException` throw paths in `DataSeeder.EnsureRolesAsync` and `EnsureUserAsync`. (`EnsurePolicyAsync` excluded — no throw path exists in the current implementation; see Context.)
 
 **Definition of Done:**
-- [ ] All Sprint 2.5 test additions pass in CI; the dead-code validation fix and both authorization fixes are verified manually and by test.
+- [x] All Sprint 2.5 test additions pass in CI; the dead-code validation fix and both authorization fixes are verified manually and by test.
 
 ---
 
-## Sprint 3 — HR Administration (Days 5.5–8) [NOT STARTED]
+## Sprint 3 — HR Administration (Days 5.5–8) [IN PROGRESS]
 
 **Goal:** HR can fully configure the organization — create/manage employees, assign each a manager, and set annual quotas per leave type. This must precede leave application, which depends on users, managers, and quotas existing.
 
@@ -478,8 +478,8 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 |--------|------|-------|------------|--------|
 | 1 | 1–2.5 | Foundation & data model | Running app + PostgreSQL + schema/migrations + seeded HR | ✅ |
 | 2 | 2.5–5 | Auth & authorization | Login/logout, roles enforced, HR password reset | ✅ |
-| 2.5 | 5–5.5 | Non-blocking cleanup | Sprint 2 review follow-ups: dead-code fix, CSRF/manager-landing/no-user-selected tests, HomeController.Error + login-redirect fixes | 🟨 |
-| 3 | 5.5–8 | HR administration | Employee CRUD, manager assignment, annual quotas | ⬜ |
+| 2.5 | 5–5.5 | Non-blocking cleanup | Sprint 2 review follow-ups: dead-code fix, CSRF/manager-landing/no-user-selected tests, HomeController.Error + login-redirect fixes | ✅ |
+| 3 | 5.5–8 | HR administration | Employee CRUD, manager assignment, annual quotas | 🟨 |
 | 4 | 8–10.5 | Leave application & balance engine | Working-day calc, balance reservation, request submission | ⬜ |
 | 5 | 10.5–13 | Approval workflow | Manager queue, approve/reject, HR fallback | ⬜ |
 | 6 | 13–15.5 | Self-service | Balances/history, cancel, withdraw-with-restore | ⬜ |
@@ -527,3 +527,4 @@ Concrete items with clear implementation direction. Will be triaged into a clean
 - [x] **(Sprint 2)** `HomeController.Error` inherits the class-level `[Authorize]` added this sprint — an unhandled exception on an anonymous request (e.g. inside `AccountController` pre-sign-in) redirects to login instead of showing the friendly error page, masking the real failure. Also, `GET /Account/Login` doesn't redirect an already-authenticated user back to home. — _Triaged into Sprint 2.5 — Non-blocking Cleanup._
 - [ ] **(Sprint 2)** No brute-force/lockout protection on login — `AccountController.Login` calls `PasswordSignInAsync(..., lockoutOnFailure: false)`, so failed attempts never increment `AccessFailedCount` and Identity's default lockout never engages, allowing unlimited password guesses against a known email. Low severity; reviewer explicitly flagged this for Sprint 8's security review (S8-2), not immediate action. *(Earmarked for Sprint 8 S8-2.)*
 - [ ] **(Sprint 2)** No explicit cookie hardening (`CookieSecurePolicy.Always`, explicit `HttpOnly`) in `ConfigureApplicationCookie` — ASP.NET Core's defaults are already reasonable, but reviewer suggested making it explicit. Reviewer flagged this for Sprint 8's security review (S8-2). *(Earmarked for Sprint 8 S8-2.)*
+- [ ] **(Sprint 2.5)** `tests/LeaveAutopilot.Tests/Infrastructure/FailingIdentityStores.cs`'s `RoleAssignmentFailingUserStore` subclasses the real EF Core `UserStore<...>` and overrides only `UpdateAsync`, relying on the internal detail that `UserManager.AddToRoleAsync` calls `UpdateAsync` to persist. If a future Identity version changes that internal call sequence, the test would silently stop covering the throw path (it would pass without exercising the intended branch, rather than failing loudly). Reviewer suggested either a code comment flagging this coupling, or a lighter-weight fake `IUserStore` that doesn't depend on `UserManager`'s internal call sequence.
