@@ -165,7 +165,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 3 — HR Administration (Days 5.5–8) [IN PROGRESS]
+## Sprint 3 — HR Administration (Days 5.5–8) [DONE]
 
 **Goal:** HR can fully configure the organization — create/manage employees, assign each a manager, and set annual quotas per leave type. This must precede leave application, which depends on users, managers, and quotas existing.
 
@@ -176,20 +176,20 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 *As HR, I want to create, edit, and deactivate employee accounts so that only current staff have access.*
 
 **Acceptance criteria:**
-- [ ] HR can create an employee (name, email, role, initial password) — duplicate email is rejected.
-- [ ] HR can edit an employee's name, email, and role.
-- [ ] HR can deactivate/reactivate an employee; deactivated users cannot log in and do not appear as assignable managers.
-- [ ] All employee-admin actions are HR-only (server-side enforced).
+- [x] HR can create an employee (name, email, role, initial password) — duplicate email is rejected.
+- [x] HR can edit an employee's name, email, and role. <!-- Cycle-1 review found a data-integrity bug: unvalidated Role string could orphan a new user (no role) or de-role an existing employee if AddToRoleAsync failed mid-flow. Fixed in cycle-2 (commit 327a7a1): Role validated against Roles.All before any Identity mutation; CreateEmployee compensates with DeleteAsync on post-validation failure; EditEmployee reordered to add-then-remove. Regression tests added and passing; reviewer confirmed resolved in final review. -->
+- [x] HR can deactivate/reactivate an employee; deactivated users cannot log in and do not appear as assignable managers.
+- [x] All employee-admin actions are HR-only (server-side enforced). <!-- Cycle-1 flagged POST actions (EditEmployee, DeactivateEmployee, ReactivateEmployee, EditQuotas POST) lacked negative auth tests. Added in cycle-2 (Employee_CannotReach_EmployeeAdminPostActions); reviewer confirmed resolved. -->
 
 ### S3-2 — Manager assignment
 
 *As HR, I want to assign each employee exactly one manager so that leave requests route to the right approver.*
 
 **Acceptance criteria:**
-- [ ] HR can set/change an employee's single assigned manager from the list of active users.
-- [ ] An employee may have no manager (allowed — handled by HR fallback in Sprint 5).
-- [ ] Self-assignment as one's own manager is prevented.
-- [ ] Deactivated users are not selectable as managers.
+- [x] HR can set/change an employee's single assigned manager from the list of active users.
+- [x] An employee may have no manager (allowed — handled by HR fallback in Sprint 5).
+- [x] Self-assignment as one's own manager is prevented.
+- [x] Deactivated users are not selectable as managers.
 
 ### S3-3 — Annual quota management
 
@@ -198,10 +198,10 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** Quota = `LeavePolicy` rows per employee × balance-backed type (`Annual`, `Medical`) × current calendar year. `Unpaid` has no quota.
 
 **Acceptance criteria:**
-- [ ] HR can set/edit allocated days for Annual and Medical for a given employee and year.
-- [ ] Allocated days must be non-negative; Unpaid is not settable (no quota).
-- [ ] Editing a quota is reflected immediately in the employee's remaining-balance calculation.
-- [ ] Quota management is HR-only.
+- [x] HR can set/edit allocated days for Annual and Medical for a given employee and year.
+- [x] Allocated days must be non-negative; Unpaid is not settable (no quota).
+- [x] Editing a quota is reflected immediately in the employee's remaining-balance calculation. <!-- No leave-consumption logic exists until Sprint 4, per sprint ordering; met at the persistence level, consistent with reviewer's assessment. -->
+- [x] Quota management is HR-only.
 
 ### S3-4 — Playwright UI test setup & HR admin coverage
 
@@ -210,18 +210,18 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** Introduce Playwright (first sprint with meaningful UI to exercise). Set up a Playwright test project that runs against the app served in Docker (via the existing `docker-compose.yml`/CI Postgres service), wire it into `.github/workflows/ci.yml` as a job that builds/starts the app and runs the Playwright suite headless. This suite grows in every subsequent sprint (S4-4, S5-4, S6-4, S7-4) rather than being re-set-up each time.
 
 **Acceptance criteria:**
-- [ ] Playwright project set up (browsers installed in CI, config points at the Dockerized app + Postgres).
-- [ ] E2E test: HR logs in, creates an employee, assigns a manager, and sets an Annual/Medical quota — asserting the UI reflects each step.
-- [ ] E2E test: HR cannot be reached by a non-HR role (negative UI test — redirected/forbidden).
-- [ ] Playwright suite runs in CI on every PR and blocks merge on failure.
+- [x] Playwright project set up (browsers installed in CI, config points at the Dockerized app + Postgres).
+- [x] E2E test: HR logs in, creates an employee, assigns a manager, and sets an Annual/Medical quota — asserting the UI reflects each step.
+- [x] E2E test: HR cannot be reached by a non-HR role (negative UI test — redirected/forbidden).
+- [x] Playwright suite runs in CI on every PR and blocks merge on failure. <!-- No repo-level branch protection/required-status-checks exist on main (pre-existing gap, confirmed not introduced by this PR), so "blocks merge" means the check goes red on the PR, same enforcement level as the existing build-and-test job. Reviewer accepted this as consistent with current repo conventions. -->
 
 **Definition of Done:**
-- [ ] HR can, end to end, create an employee, assign a manager, and set that employee's Annual and Medical quotas.
-- [ ] Playwright is set up and its HR-admin suite passes in CI.
+- [x] HR can, end to end, create an employee, assign a manager, and set that employee's Annual and Medical quotas.
+- [x] Playwright is set up and its HR-admin suite passes in CI.
 
 ---
 
-## Sprint 4 — Leave Application & Balance Engine (Days 8–10.5) [NOT STARTED]
+## Sprint 4 — Leave Application & Balance Engine (Days 8–10.5) [IN PROGRESS]
 
 **Goal:** Employees can submit leave requests with correct working-day/half-day counting and balance reservation. This is the core value and holds the trickiest logic — it gets a dedicated sprint.
 
@@ -479,8 +479,8 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 | 1 | 1–2.5 | Foundation & data model | Running app + PostgreSQL + schema/migrations + seeded HR | ✅ |
 | 2 | 2.5–5 | Auth & authorization | Login/logout, roles enforced, HR password reset | ✅ |
 | 2.5 | 5–5.5 | Non-blocking cleanup | Sprint 2 review follow-ups: dead-code fix, CSRF/manager-landing/no-user-selected tests, HomeController.Error + login-redirect fixes | ✅ |
-| 3 | 5.5–8 | HR administration | Employee CRUD, manager assignment, annual quotas | 🟨 |
-| 4 | 8–10.5 | Leave application & balance engine | Working-day calc, balance reservation, request submission | ⬜ |
+| 3 | 5.5–8 | HR administration | Employee CRUD, manager assignment, annual quotas | ✅ |
+| 4 | 8–10.5 | Leave application & balance engine | Working-day calc, balance reservation, request submission | 🟨 |
 | 5 | 10.5–13 | Approval workflow | Manager queue, approve/reject, HR fallback | ⬜ |
 | 6 | 13–15.5 | Self-service | Balances/history, cancel, withdraw-with-restore | ⬜ |
 | 7 | 15.5–18 | Oversight & hardening | HR company view, state-machine/concurrency safety, responsive polish | ⬜ |
@@ -528,3 +528,5 @@ Concrete items with clear implementation direction. Will be triaged into a clean
 - [ ] **(Sprint 2)** No brute-force/lockout protection on login — `AccountController.Login` calls `PasswordSignInAsync(..., lockoutOnFailure: false)`, so failed attempts never increment `AccessFailedCount` and Identity's default lockout never engages, allowing unlimited password guesses against a known email. Low severity; reviewer explicitly flagged this for Sprint 8's security review (S8-2), not immediate action. *(Earmarked for Sprint 8 S8-2.)*
 - [ ] **(Sprint 2)** No explicit cookie hardening (`CookieSecurePolicy.Always`, explicit `HttpOnly`) in `ConfigureApplicationCookie` — ASP.NET Core's defaults are already reasonable, but reviewer suggested making it explicit. Reviewer flagged this for Sprint 8's security review (S8-2). *(Earmarked for Sprint 8 S8-2.)*
 - [ ] **(Sprint 2.5)** `tests/LeaveAutopilot.Tests/Infrastructure/FailingIdentityStores.cs`'s `RoleAssignmentFailingUserStore` subclasses the real EF Core `UserStore<...>` and overrides only `UpdateAsync`, relying on the internal detail that `UserManager.AddToRoleAsync` calls `UpdateAsync` to persist. If a future Identity version changes that internal call sequence, the test would silently stop covering the throw path (it would pass without exercising the intended branch, rather than failing loudly). Reviewer suggested either a code comment flagging this coupling, or a lighter-weight fake `IUserStore` that doesn't depend on `UserManager`'s internal call sequence.
+- [ ] **(Sprint 3)** `HrController.CreateEmployee`'s compensating `DeleteAsync(user)` (`HrController.cs:147`, added in the cycle-2 fix for the role-assignment data-integrity bug) doesn't check its own result. If `AddToRoleAsync` fails for an unexpected Identity-level reason *and* the compensating `DeleteAsync` also fails, the original orphaned-roleless-account symptom could still occur — now behind two independent failures instead of one. Vanishingly unlikely (the realistic failure mode, an invalid role string, is fully closed by the up-front `Roles.All` validation) and explicitly flagged by the reviewer as non-blocking. To fully close the loop: check `deleteResult.Succeeded` and log/surface a distinct error on double-failure.
+- [ ] **(Sprint 3)** `LoginAsync`/`LoginAsHrAsync` test helper methods are copy-pasted verbatim across 8 test files (`AuthenticationTests`, `AuthorizationTests`, `CsrfProtectionTests`, `HomePageTests`, `HomeErrorAndLoginRedirectTests`, `HrPasswordResetTests`, plus the 3 new Sprint 3 HR test classes — `HrEmployeeManagementTests`, `HrManagerAssignmentTests`, `HrQuotaManagementTests`). The implementer deliberately left this out of the Sprint 3 PR (extracting for just the 3 new files would be inconsistent with the other 5, and a repo-wide extraction was out of scope for that PR) and flagged it as a dedicated follow-up. Extract a shared login helper (e.g., a common test base class or static helper) used by all 8 test files.
