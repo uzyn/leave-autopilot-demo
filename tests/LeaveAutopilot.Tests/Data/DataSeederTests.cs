@@ -91,4 +91,52 @@ public class DataSeederTests(DatabaseFixture fixture)
             Assert.Equal(2, policyCount); // Annual + Medical, no duplicates from the second run
         }
     }
+
+    // S2.5-4: DataSeeder.EnsureRolesAsync/EnsureUserAsync have InvalidOperationException throw
+    // paths that only trigger when an underlying Identity operation reports failure — something
+    // that never happens against a healthy database in the tests above. These tests substitute
+    // fake stores (see FailingIdentityStores.cs) to deterministically exercise those paths.
+    //
+    // Note: EnsurePolicyAsync has no Identity call and no throw path in the current
+    // implementation (it only queries/adds a LeavePolicy row via EF Core directly), so there is
+    // nothing to cover there; the sprint note grouping it with the other two methods does not
+    // match the code as written.
+
+    [Fact]
+    public async Task SeedAsync_ThrowsInvalidOperationException_WhenRoleCreationFails()
+    {
+        await using var services = IdentityServiceProviderFactory.Build(
+            fixture.ConnectionString,
+            new SeedOptions { HrEmail = "hr-seedtest-rolefail@leaveautopilot.local", HrPassword = "SeedTest123!", HrFullName = "Test HR" },
+            configureServices: s => s.AddScoped<IRoleStore<IdentityRole<Guid>>>(_ => new FailingRoleStore()));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => DataSeeder.SeedAsync(services));
+        Assert.Contains("Failed to create role", ex.Message);
+    }
+
+    [Fact]
+    public async Task SeedAsync_ThrowsInvalidOperationException_WhenUserCreationFails_DueToWeakPassword()
+    {
+        await using var services = IdentityServiceProviderFactory.Build(
+            fixture.ConnectionString,
+            new SeedOptions { HrEmail = "hr-seedtest-userfail@leaveautopilot.local", HrPassword = "weak", HrFullName = "Test HR" });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => DataSeeder.SeedAsync(services));
+        Assert.Contains("Failed to seed user", ex.Message);
+    }
+
+    [Fact]
+    public async Task SeedAsync_ThrowsInvalidOperationException_WhenRoleAssignmentFails()
+    {
+        const string email = "hr-seedtest-roleassignfail@leaveautopilot.local";
+
+        await using var services = IdentityServiceProviderFactory.Build(
+            fixture.ConnectionString,
+            new SeedOptions { HrEmail = email, HrPassword = "SeedTest123!", HrFullName = "Test HR" },
+            configureServices: s => s.AddScoped<IUserStore<ApplicationUser>>(
+                sp => new RoleAssignmentFailingUserStore(sp.GetRequiredService<ApplicationDbContext>())));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => DataSeeder.SeedAsync(services));
+        Assert.Contains("Failed to assign role", ex.Message);
+    }
 }

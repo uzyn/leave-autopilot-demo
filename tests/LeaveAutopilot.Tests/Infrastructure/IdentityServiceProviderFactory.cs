@@ -11,7 +11,8 @@ namespace LeaveAutopilot.Tests.Infrastructure;
 /// <summary>Builds a minimal DI container mirroring Program.cs's Identity/EF wiring, for testing DataSeeder in isolation.</summary>
 public static class IdentityServiceProviderFactory
 {
-    public static ServiceProvider Build(string connectionString, SeedOptions? seedOptions = null)
+    public static ServiceProvider Build(
+        string connectionString, SeedOptions? seedOptions = null, Action<IServiceCollection>? configureServices = null)
     {
         var services = new ServiceCollection();
 
@@ -31,6 +32,10 @@ public static class IdentityServiceProviderFactory
             o.HrFullName = effective.HrFullName;
             o.IncludeSampleData = effective.IncludeSampleData;
         });
+
+        // Registered last so it wins over the EF Core stores above — lets failure-path tests
+        // swap in a store that simulates an Identity operation failing.
+        configureServices?.Invoke(services);
 
         return services.BuildServiceProvider();
     }

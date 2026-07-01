@@ -105,4 +105,36 @@ public class HrPasswordResetTests : IClassFixture<WebApplicationFactory<Program>
         var loginResult = await LoginAsync(targetClient, targetEmail, targetOldPassword);
         Assert.Contains("Welcome", await loginResult.Content.ReadAsStringAsync());
     }
+
+    // S2.5-1: submitting the placeholder "-- select a user --" option (an empty UserId) used to
+    // fail at model-binding time with MVC's generic type-conversion error instead of the
+    // intended "Select a user." message, because [Required] is dead code on a non-nullable Guid.
+    // UserId is now nullable so the empty submission binds to null and [Required] catches it.
+    [Fact]
+    public async Task Hr_SubmittingResetPassword_WithNoUserSelected_ShowsSelectAUserMessage()
+    {
+        var hrEmail = $"hrreset-nouser-hr-{Guid.NewGuid():N}@leaveautopilot.local";
+        const string hrPassword = "HrPass123!";
+        await TestUserFactory.CreateUserAsync(_factory.Services, hrEmail, hrPassword, Roles.Hr);
+
+        var hrClient = _factory.CreateClient();
+        await LoginAsync(hrClient, hrEmail, hrPassword);
+
+        var resetPage = await hrClient.GetAsync("/Hr/ResetPassword");
+        var token = await AntiForgeryHelper.ExtractTokenAsync(resetPage);
+
+        var form = new Dictionary<string, string>
+        {
+            ["UserId"] = string.Empty,
+            ["NewPassword"] = "NewPass456!",
+            ["ConfirmPassword"] = "NewPass456!",
+            ["__RequestVerificationToken"] = token,
+        };
+
+        var response = await hrClient.PostAsync("/Hr/ResetPassword", new FormUrlEncodedContent(form));
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Select a user.", body);
+    }
 }

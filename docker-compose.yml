@@ -1,7 +1,12 @@
 services:
   db:
     image: postgres:16
-    container_name: leave-postgres
+    # No hardcoded container_name here: Compose derives container names from the project
+    # name (COMPOSE_PROJECT_NAME, or the containing directory's basename by default), so a
+    # second checkout in a different directory — e.g. a `git worktree` used for parallel
+    # branch work — gets its own uniquely-named container instead of colliding with this
+    # one. Override the project name explicitly with `docker compose -p <name> ...` or the
+    # COMPOSE_PROJECT_NAME env var if you want a specific name.
     restart: unless-stopped
     environment:
       POSTGRES_DB: leaveapp

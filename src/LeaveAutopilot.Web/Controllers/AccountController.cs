@@ -18,6 +18,13 @@ public class AccountController(SignInManager<ApplicationUser> signInManager, Use
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
+        // An already-authenticated user hitting the login form is confusing more than
+        // useful — send them on to the home page instead of showing the form again.
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToLocalOrHome(returnUrl);
+        }
+
         ViewData["ReturnUrl"] = returnUrl;
         return View(new LoginViewModel());
     }
