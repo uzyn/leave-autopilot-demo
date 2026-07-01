@@ -1,4 +1,5 @@
 using LeaveAutopilot.Tests.Infrastructure;
+using LeaveAutopilot.Web.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace LeaveAutopilot.Tests.Web;
@@ -6,6 +7,9 @@ namespace LeaveAutopilot.Tests.Web;
 /// <summary>
 /// End-to-end smoke test (S1-1 AC): the app boots (running migrations/seeding against the
 /// configured database, same as Program.cs does at startup) and serves the landing page.
+/// Since Sprint 2 (S2-2), the landing page requires authentication — an anonymous request
+/// is redirected to login (covered by AuthorizationTests); this test verifies the
+/// authenticated path still renders successfully.
 /// Runs in the shared "Database" collection so it never races the constraint/migration
 /// tests that drop and recreate the same test database.
 /// </summary>
@@ -16,22 +20,33 @@ public class HomePageTests : IClassFixture<WebApplicationFactory<Program>>
 
     public HomePageTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            var testConnectionString =
-                Environment.GetEnvironmentVariable("ConnectionStrings__TestConnection")
-                ?? "Host=localhost;Port=5432;Database=leaveapp_test;Username=postgres;Password=postgres";
+        _factory = factory.ConfigureTestDatabase();
+    }
 
-            builder.UseSetting("ConnectionStrings:DefaultConnection", testConnectionString);
-        });
+    private static async Task<HttpResponseMessage> LoginAsync(HttpClient client, string email, string password)
+    {
+        var loginPage = await client.GetAsync("/Account/Login");
+        var token = await AntiForgeryHelper.ExtractTokenAsync(loginPage);
+
+        var form = new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Password"] = password,
+            ["__RequestVerificationToken"] = token,
+        };
+
+        return await client.PostAsync("/Account/Login", new FormUrlEncodedContent(form));
     }
 
     [Fact]
-    public async Task GetHome_ReturnsSuccess_AndRendersLandingPage()
+    public async Task GetHome_WhenAuthenticated_ReturnsSuccess_AndRendersLandingPage()
     {
-        var client = _factory.CreateClient();
+        var email = $"home-{Guid.NewGuid():N}@leaveautopilot.local";
+        const string password = "Password123!";
+        await TestUserFactory.CreateUserAsync(_factory.Services, email, password, Roles.Employee);
 
-        var response = await client.GetAsync("/");
+        var client = _factory.CreateClient();
+        var response = await LoginAsync(client, email, password);
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync();

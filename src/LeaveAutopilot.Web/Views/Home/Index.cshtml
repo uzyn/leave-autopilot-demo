@@ -3,6 +3,18 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Welcome, @User.Identity?.Name</h1>
+
+    @if (User.IsInRole(Roles.Hr))
+    {
+        <p>You're signed in as <strong>HR</strong>. You can <a asp-controller="Hr" asp-action="ResetPassword">reset a user's password</a>.</p>
+    }
+    else if (User.IsInRole(Roles.Manager))
+    {
+        <p>You're signed in as a <strong>Manager</strong>.</p>
+    }
+    else
+    {
+        <p>You're signed in as an <strong>Employee</strong>.</p>
+    }
 </div>
