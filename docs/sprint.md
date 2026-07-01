@@ -28,6 +28,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 4. **First admin:** The initial HR account is created via a **seed script** on first run. *(Sprint 1)*
 5. **Medical/Sick evidence:** No attachments/certificates in v1.
 6. **Team calendar / overlap detection:** Not in v1.
+7. **UI testing:** From **Sprint 3 onward**, each sprint adds Playwright browser-based end-to-end tests covering that sprint's key UI flows, on top of unit/integration tests. Playwright is introduced in Sprint 3 (first sprint with meaningful HR-admin UI to exercise) and its suite grows sprint over sprint; it runs in the GitHub Actions CI pipeline (added in Sprint 1) against the app + Postgres running in Docker.
 
 ---
 
@@ -169,8 +170,21 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 - [ ] Editing a quota is reflected immediately in the employee's remaining-balance calculation.
 - [ ] Quota management is HR-only.
 
+### S3-4 — Playwright UI test setup & HR admin coverage
+
+*As the team, I want automated browser-based UI tests so that critical screens are verified end-to-end, not just at the unit/integration level.*
+
+**Technical context:** Introduce Playwright (first sprint with meaningful UI to exercise). Set up a Playwright test project that runs against the app served in Docker (via the existing `docker-compose.yml`/CI Postgres service), wire it into `.github/workflows/ci.yml` as a job that builds/starts the app and runs the Playwright suite headless. This suite grows in every subsequent sprint (S4-4, S5-4, S6-4, S7-4) rather than being re-set-up each time.
+
+**Acceptance criteria:**
+- [ ] Playwright project set up (browsers installed in CI, config points at the Dockerized app + Postgres).
+- [ ] E2E test: HR logs in, creates an employee, assigns a manager, and sets an Annual/Medical quota — asserting the UI reflects each step.
+- [ ] E2E test: HR cannot be reached by a non-HR role (negative UI test — redirected/forbidden).
+- [ ] Playwright suite runs in CI on every PR and blocks merge on failure.
+
 **Definition of Done:**
 - [ ] HR can, end to end, create an employee, assign a manager, and set that employee's Annual and Medical quotas.
+- [ ] Playwright is set up and its HR-admin suite passes in CI.
 
 ---
 
@@ -215,8 +229,18 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 - [ ] Unpaid requests submit regardless of balance and reserve no balance.
 - [ ] Users of any role (Employee/Manager/HR) can submit their own requests.
 
+### S4-4 — Playwright coverage: leave application
+
+*As the team, I want browser-based coverage of the leave application flow so that regressions in the trickiest logic (working-day/balance math) surface at the UI level too.*
+
+**Acceptance criteria:**
+- [ ] E2E test: employee submits an Annual request spanning a weekend and sees the correct chargeable-day count and reserved balance reflected in the UI.
+- [ ] E2E test: employee submission is blocked in the UI with a clear message for insufficient balance and for a cross-year span.
+- [ ] Playwright suite (cumulative with Sprint 3's) passes in CI.
+
 **Definition of Done:**
 - [ ] An employee submits Annual, Medical, and Unpaid requests; day counts and balance reservations are correct; invalid inputs are blocked.
+- [ ] Playwright leave-application suite passes in CI.
 
 ---
 
@@ -257,8 +281,19 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 - [ ] HR can approve/reject these with the same balance rules as a manager.
 - [ ] A user with an assigned manager does NOT appear in the HR fallback queue.
 
+### S5-4 — Playwright coverage: approval workflow
+
+*As the team, I want browser-based coverage of the manager/HR approval flow so that the apply→approve/reject cycle is verified end-to-end in the UI.*
+
+**Acceptance criteria:**
+- [ ] E2E test: manager logs in, sees a pending request from a report, approves it, and the requester's balance/history reflects the decision.
+- [ ] E2E test: manager rejects a request with a note; requester sees the rejection and released balance.
+- [ ] E2E test: a manager-less user's request surfaces in the HR fallback queue and HR can decide it.
+- [ ] Playwright suite (cumulative) passes in CI.
+
 **Definition of Done:**
 - [ ] Full apply→approve and apply→reject cycles work with correct balance effects; manager-less requests are handled by HR.
+- [ ] Playwright approval-workflow suite passes in CI.
 
 ---
 
@@ -298,8 +333,18 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 - [ ] Withdrawal is blocked for approved requests that have started or are in the past.
 - [ ] An employee cannot withdraw another user's request.
 
+### S6-4 — Playwright coverage: self-service
+
+*As the team, I want browser-based coverage of balances/history/cancel/withdraw so that balance-restoration logic is verified end-to-end in the UI.*
+
+**Acceptance criteria:**
+- [ ] E2E test: employee views balances/history, cancels a pending request, and sees the balance restored in the UI.
+- [ ] E2E test: employee withdraws a future-dated approved request and sees the balance restored; withdrawal is blocked in the UI for a past/started approved request.
+- [ ] Playwright suite (cumulative) passes in CI.
+
 **Definition of Done:**
 - [ ] Balances/history render correctly; cancel and withdraw both adjust balances correctly and enforce their state/date rules.
+- [ ] Playwright self-service suite passes in CI.
 
 ---
 
@@ -339,8 +384,18 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 - [ ] Forms have proper labels and are keyboard-operable.
 - [ ] No horizontal-scroll/overflow breakage on common mobile widths.
 
+### S7-4 — Playwright coverage: HR oversight & responsive checks
+
+*As the team, I want browser-based coverage of HR's company-wide view and a mobile-viewport smoke pass so that oversight and responsive polish are verified end-to-end.*
+
+**Acceptance criteria:**
+- [ ] E2E test: HR views company-wide balances/requests and filters by employee and/or state.
+- [ ] E2E test (mobile viewport): login and leave-application flow render and function correctly on a small viewport (no overflow/broken layout).
+- [ ] Playwright suite (cumulative) passes in CI.
+
 **Definition of Done:**
 - [ ] HR oversight works; state machine and concurrency are provably safe (tests green, audit clean); UI is responsive and accessible.
+- [ ] Playwright HR-oversight/responsive suite passes in CI.
 
 ---
 
@@ -357,7 +412,8 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Acceptance criteria:**
 - [ ] Automated tests cover: apply→approve→balance-deducted; apply→reject→balance-released; cancel; withdraw-restores; HR create-employee→assign-manager→set-quota.
 - [ ] Authorization negative tests: each role is blocked from others' privileged actions and data.
-- [ ] Test suite runs green in one command and is documented in the README.
+- [ ] The cumulative Playwright suite (Sprints 3–7) runs green in CI alongside unit/integration tests — no flaky or skipped E2E specs.
+- [ ] Test suite (unit + integration + Playwright) runs green in one command and is documented in the README.
 
 ### S8-2 — Security review & hardening
 
