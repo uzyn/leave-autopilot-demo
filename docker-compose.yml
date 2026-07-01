@@ -74,8 +74,13 @@ services:
       # Named volume for node_modules (not bind-mounted from the host) so installed
       # binaries always match the container's architecture, and local `npm install`
       # runs don't leave Linux-specific artifacts on the host filesystem.
+      #
+      # playwright-report and test-results are intentionally NOT given their own volume
+      # entries: they're plain subdirectories of the ./e2e bind mount above, so Playwright
+      # writes them straight to the host filesystem where CI's artifact-upload step (and
+      # local inspection) can read them. A named volume here would shadow the bind mount and
+      # silently make the report directory empty on the host.
       - playwright-node-modules:/e2e/node_modules
-      - playwright-report:/e2e/playwright-report
     depends_on:
       app:
         condition: service_healthy
@@ -87,4 +92,3 @@ volumes:
   pgdata:
   nuget-cache:
   playwright-node-modules:
-  playwright-report:

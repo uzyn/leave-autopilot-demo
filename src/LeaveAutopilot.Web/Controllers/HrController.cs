@@ -109,6 +109,15 @@ public class HrController(UserManager<ApplicationUser> userManager, ApplicationD
             return View(BuildCreateEmployeeViewModel(model));
         }
 
+        // Never trust the client-side <select> to constrain Role: validate against the known
+        // role set before any Identity mutation runs, so a forged/unexpected value is rejected
+        // up front instead of creating a user we then can't cleanly assign a role to.
+        if (!Roles.All.Contains(model.Role))
+        {
+            ModelState.AddModelError(nameof(model.Role), "Select a valid role.");
+            return View(BuildCreateEmployeeViewModel(model));
+        }
+
         var user = new ApplicationUser
         {
             UserName = model.Email,
@@ -132,6 +141,11 @@ public class HrController(UserManager<ApplicationUser> userManager, ApplicationD
         var roleResult = await userManager.AddToRoleAsync(user, model.Role);
         if (!roleResult.Succeeded)
         {
+            // Compensate: the role is now known-valid (checked above), so this can only fail
+            // for an unexpected Identity-level reason. Roll back the just-created user rather
+            // than leaving a roleless account occupying the email with no recovery path.
+            await userManager.DeleteAsync(user);
+
             foreach (var error in roleResult.Errors)
             {
                 ModelState.AddModelError(string.Empty, error.Description);
@@ -195,6 +209,15 @@ public class HrController(UserManager<ApplicationUser> userManager, ApplicationD
             }
         }
 
+        // Never trust the client-side <select> to constrain Role: validate against the known
+        // role set before any Identity role mutation runs, so a forged/unexpected value is
+        // rejected up front rather than risking an existing employee being stripped of their
+        // role (see the add-before-remove ordering below for the remaining failure mode).
+        if (!Roles.All.Contains(model.Role))
+        {
+            ModelState.AddModelError(nameof(model.Role), "Select a valid role.");
+        }
+
         if (!ModelState.IsValid)
         {
             return View(await BuildEditEmployeeViewModelAsync(model));
@@ -249,11 +272,9 @@ public class HrController(UserManager<ApplicationUser> userManager, ApplicationD
         var currentRoles = await userManager.GetRolesAsync(user);
         if (!currentRoles.Contains(model.Role))
         {
-            if (currentRoles.Count > 0)
-            {
-                await userManager.RemoveFromRolesAsync(user, currentRoles);
-            }
-
+            // Add the new (already-validated) role before removing the old one(s): if the add
+            // fails for some unexpected Identity-level reason, the employee keeps their
+            // previous role instead of being left with none.
             var addRoleResult = await userManager.AddToRoleAsync(user, model.Role);
             if (!addRoleResult.Succeeded)
             {
@@ -263,6 +284,11 @@ public class HrController(UserManager<ApplicationUser> userManager, ApplicationD
                 }
 
                 return View(await BuildEditEmployeeViewModelAsync(model));
+            }
+
+            if (currentRoles.Count > 0)
+            {
+                await userManager.RemoveFromRolesAsync(user, currentRoles);
             }
         }
 
@@ -352,8 +378,10 @@ public class HrController(UserManager<ApplicationUser> userManager, ApplicationD
             return View(model);
         }
 
-        await SetAllocatedDaysAsync(user.Id, LeaveType.Annual, year, model.AnnualAllocatedDays);
-        await SetAllocatedDaysAsync(user.Id, LeaveType.Medical, year, model.MedicalAllocatedDays);
+        // ModelState.IsValid (checked above) guarantees both values are non-null here:
+        // [Required] on the nullable decimals rejects a missing/blank submission first.
+        await SetAllocatedDaysAsync(user.Id, LeaveType.Annual, year, model.AnnualAllocatedDays!.Value);
+        await SetAllocatedDaysAsync(user.Id, LeaveType.Medical, year, model.MedicalAllocatedDays!.Value);
         await dbContext.SaveChangesAsync();
 
         TempData["EmployeesSuccess"] = $"Updated {year} quotas for {user.FullName}.";

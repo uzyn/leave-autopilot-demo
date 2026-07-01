@@ -201,4 +201,137 @@ public class HrEmployeeManagementTests : IClassFixture<WebApplicationFactory<Pro
         var createResponse = await client.GetAsync("/Hr/CreateEmployee");
         Assert.Equal(HttpStatusCode.Forbidden, createResponse.StatusCode);
     }
+
+    /// <summary>
+    /// Covers the write paths of the HR-only enforcement, not just the two GET actions
+    /// above: the class-level [Authorize(Roles = Roles.Hr)] should reject every mutating
+    /// employee-admin action for a non-HR caller.
+    /// </summary>
+    [Fact]
+    public async Task Employee_CannotReach_EmployeeAdminPostActions()
+    {
+        var employeeEmail = $"authz-emp-post-{Guid.NewGuid():N}@leaveautopilot.local";
+        const string password = "Password123!";
+        await TestUserFactory.CreateUserAsync(_factory.Services, employeeEmail, password, Roles.Employee);
+        var target = await TestUserFactory.CreateUserAsync(
+            _factory.Services, $"authz-target-{Guid.NewGuid():N}@leaveautopilot.local", "Password123!", Roles.Employee);
+
+        var client = _factory.CreateClient();
+        await LoginAsync(client, employeeEmail, password);
+
+        // No CSRF token is fetched here: [Authorize] runs (and should reject) before
+        // antiforgery validation would even be reached for these POSTs.
+        var editResponse = await client.PostAsync(
+            $"/Hr/EditEmployee/{target.Id}",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["FullName"] = target.FullName,
+                ["Email"] = target.Email!,
+                ["Role"] = Roles.Employee,
+            }));
+        Assert.Equal(HttpStatusCode.Forbidden, editResponse.StatusCode);
+
+        var deactivateResponse = await client.PostAsync($"/Hr/DeactivateEmployee/{target.Id}", new FormUrlEncodedContent([]));
+        Assert.Equal(HttpStatusCode.Forbidden, deactivateResponse.StatusCode);
+
+        var reactivateResponse = await client.PostAsync($"/Hr/ReactivateEmployee/{target.Id}", new FormUrlEncodedContent([]));
+        Assert.Equal(HttpStatusCode.Forbidden, reactivateResponse.StatusCode);
+
+        var quotasResponse = await client.PostAsync(
+            $"/Hr/EditQuotas/{target.Id}",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["AnnualAllocatedDays"] = "10",
+                ["MedicalAllocatedDays"] = "5",
+            }));
+        Assert.Equal(HttpStatusCode.Forbidden, quotasResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Hr_EditingEmployee_ToAnotherUsersEmail_IsRejected()
+    {
+        var hrClient = await LoginAsHrAsync();
+        var existing = await TestUserFactory.CreateUserAsync(
+            _factory.Services, $"taken-{Guid.NewGuid():N}@leaveautopilot.local", "Password123!", Roles.Employee);
+        var employee = await TestUserFactory.CreateUserAsync(
+            _factory.Services, $"editme-{Guid.NewGuid():N}@leaveautopilot.local", "Password123!", Roles.Employee, fullName: "Edit Me");
+
+        var editPage = await hrClient.GetAsync($"/Hr/EditEmployee/{employee.Id}");
+        var token = await AntiForgeryHelper.ExtractTokenAsync(editPage);
+
+        var form = new Dictionary<string, string>
+        {
+            ["FullName"] = employee.FullName,
+            ["Email"] = existing.Email!,
+            ["Role"] = Roles.Employee,
+            ["__RequestVerificationToken"] = token,
+        };
+
+        var response = await hrClient.PostAsync($"/Hr/EditEmployee/{employee.Id}", new FormUrlEncodedContent(form));
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal($"/Hr/EditEmployee/{employee.Id}", response.RequestMessage!.RequestUri!.AbsolutePath);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("already in use", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Hr_CreatingEmployee_WithInvalidRole_IsRejected_AndNoUserIsCreated()
+    {
+        var hrClient = await LoginAsHrAsync();
+        var newEmail = $"badrole-{Guid.NewGuid():N}@leaveautopilot.local";
+
+        var createPage = await hrClient.GetAsync("/Hr/CreateEmployee");
+        var token = await AntiForgeryHelper.ExtractTokenAsync(createPage);
+
+        var form = new Dictionary<string, string>
+        {
+            ["FullName"] = "Bad Role",
+            ["Email"] = newEmail,
+            ["Role"] = "SuperAdmin",
+            ["InitialPassword"] = "NewHire123!",
+            ["__RequestVerificationToken"] = token,
+        };
+
+        var response = await hrClient.PostAsync("/Hr/CreateEmployee", new FormUrlEncodedContent(form));
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("/Hr/CreateEmployee", response.RequestMessage!.RequestUri!.AbsolutePath);
+        Assert.Contains("Select a valid role", await response.Content.ReadAsStringAsync());
+
+        // No orphaned/roleless user should have been created for the rejected role.
+        var loginResult = await LoginAsync(_factory.CreateClient(), newEmail, "NewHire123!");
+        Assert.DoesNotContain("Welcome", await loginResult.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Hr_EditingEmployee_WithInvalidRole_IsRejected_AndOriginalRoleIsKept()
+    {
+        var hrClient = await LoginAsHrAsync();
+        var employee = await TestUserFactory.CreateUserAsync(
+            _factory.Services, $"keep-role-{Guid.NewGuid():N}@leaveautopilot.local", "Password123!", Roles.Employee, fullName: "Keep Role");
+
+        var editPage = await hrClient.GetAsync($"/Hr/EditEmployee/{employee.Id}");
+        var token = await AntiForgeryHelper.ExtractTokenAsync(editPage);
+
+        var form = new Dictionary<string, string>
+        {
+            ["FullName"] = employee.FullName,
+            ["Email"] = employee.Email!,
+            ["Role"] = "SuperAdmin",
+            ["__RequestVerificationToken"] = token,
+        };
+
+        var response = await hrClient.PostAsync($"/Hr/EditEmployee/{employee.Id}", new FormUrlEncodedContent(form));
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal($"/Hr/EditEmployee/{employee.Id}", response.RequestMessage!.RequestUri!.AbsolutePath);
+        Assert.Contains("Select a valid role", await response.Content.ReadAsStringAsync());
+
+        // The employee should still have their original role, not be roleless.
+        var listBody = await (await hrClient.GetAsync("/Hr/Employees")).Content.ReadAsStringAsync();
+        Assert.Contains("Keep Role", listBody);
+        var loginResult = await LoginAsync(_factory.CreateClient(), employee.Email!, "Password123!");
+        Assert.Contains("Welcome", await loginResult.Content.ReadAsStringAsync());
+    }
 }
