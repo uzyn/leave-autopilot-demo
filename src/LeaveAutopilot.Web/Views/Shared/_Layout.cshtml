@@ -33,6 +33,9 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Leave" asp-action="Apply">Apply for leave</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Approval" asp-action="Index">Approvals</a>
+                            </li>
                         }
                         @if (User.IsInRole(Roles.Hr))
                         {

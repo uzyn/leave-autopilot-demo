@@ -50,13 +50,14 @@
                 <th>Days</th>
                 <th>State</th>
                 <th>Reason</th>
+                <th>Decision note</th>
             </tr>
         </thead>
         <tbody>
             @if (!Model.Requests.Any())
             {
                 <tr>
-                    <td colspan="5" class="text-muted">No requests yet.</td>
+                    <td colspan="6" class="text-muted">No requests yet.</td>
                 </tr>
             }
             @foreach (var request in Model.Requests)
@@ -81,6 +82,7 @@
                     <td id="chargeable-days-@request.Id">@request.ChargeableDays.ToString("0.#")</td>
                     <td id="state-@request.Id"><span class="badge bg-secondary">@request.State</span></td>
                     <td>@(request.Reason ?? "—")</td>
+                    <td id="decision-note-@request.Id">@(request.DecisionNote ?? "—")</td>
                 </tr>
             }
         </tbody>

@@ -104,6 +104,7 @@ public class LeaveController(
                 ChargeableDays = r.ChargeableDays,
                 State = r.State,
                 Reason = r.Reason,
+                DecisionNote = r.DecisionNote,
                 CreatedAt = r.CreatedAt,
             })
             .ToListAsync();

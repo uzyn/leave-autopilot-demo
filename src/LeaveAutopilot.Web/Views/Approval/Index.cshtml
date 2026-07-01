@@ -1,0 +1,28 @@
+@model LeaveAutopilot.Web.Models.Approval.ApprovalQueueViewModel
+@{
+    ViewData["Title"] = "Approvals";
+}
+
+<h1>Approvals</h1>
+
+@if (TempData["ApprovalSuccess"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+@if (TempData["ApprovalError"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<h2 class="h4">Your reports' pending requests</h2>
+<div id="manager-queue" class="table-responsive mb-4">
+    @await Html.PartialAsync("_QueueTable", Model.ManagerQueue)
+</div>
+
+@if (Model.IsHr)
+{
+    <h2 class="h4">Manager-less requests (HR fallback)</h2>
+    <div id="hr-fallback-queue" class="table-responsive">
+        @await Html.PartialAsync("_QueueTable", Model.HrFallbackQueue)
+    </div>
+}
