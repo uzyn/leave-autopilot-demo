@@ -50,7 +50,41 @@ services:
       - "8080:8080"
       - "8081:8081"
     command: ["dotnet", "run", "--project", "src/LeaveAutopilot.Web", "--no-launch-profile"]
+    healthcheck:
+      # No curl in the SDK base image; a bash /dev/tcp probe needs nothing extra installed.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # Playwright browser-based E2E tests (S3-4). Runs against the `app` + `db` services
+  # above (started separately, e.g. `docker compose up -d --wait db app`) rather than
+  # starting its own server. See README for usage.
+  #
+  # The image tag's Playwright version must match e2e/package.json's @playwright/test
+  # version exactly — this image ships browsers pre-installed for that exact release, so
+  # there's no separate `playwright install` step (and no risk of a client/browser
+  # version-drift failure if npm ever resolved a newer @playwright/test).
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    working_dir: /e2e
+    volumes:
+      - ./e2e:/e2e
+      # Named volume for node_modules (not bind-mounted from the host) so installed
+      # binaries always match the container's architecture, and local `npm install`
+      # runs don't leave Linux-specific artifacts on the host filesystem.
+      - playwright-node-modules:/e2e/node_modules
+      - playwright-report:/e2e/playwright-report
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://app:8080
+    command: ["bash", "-c", "npm install && npx playwright test"]
 
 volumes:
   pgdata:
   nuget-cache:
+  playwright-node-modules:
+  playwright-report:

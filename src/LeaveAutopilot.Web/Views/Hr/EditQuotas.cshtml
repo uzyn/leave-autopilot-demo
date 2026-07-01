@@ -1,0 +1,36 @@
+@model LeaveAutopilot.Web.Models.Hr.EditQuotasViewModel
+@{
+    ViewData["Title"] = "Edit quotas";
+}
+
+<h1>Edit @Model.Year quotas — @Model.EmployeeName</h1>
+<p>Unpaid leave is uncapped and has no quota.</p>
+
+@if (TempData["EmployeesSuccess"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+
+<div class="row">
+    <div class="col-md-5">
+        <form asp-controller="Hr" asp-action="EditQuotas" asp-route-id="@Model.EmployeeId" method="post">
+            <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="form-group mb-3">
+                <label asp-for="AnnualAllocatedDays" class="form-label"></label>
+                <input asp-for="AnnualAllocatedDays" type="number" step="0.5" min="0" class="form-control" />
+                <span asp-validation-for="AnnualAllocatedDays" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3">
+                <label asp-for="MedicalAllocatedDays" class="form-label"></label>
+                <input asp-for="MedicalAllocatedDays" type="number" step="0.5" min="0" class="form-control" />
+                <span asp-validation-for="MedicalAllocatedDays" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Save quotas</button>
+            <a asp-controller="Hr" asp-action="Employees" class="btn btn-link">Back to employees</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

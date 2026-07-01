@@ -1,0 +1,12 @@
+{
+  "name": "leave-autopilot-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Playwright browser-based end-to-end tests for the leave management app (S3-4). Runs against the app + Postgres stack served via the repo's docker-compose.yml.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.48.0"
+  }
+}

@@ -103,20 +103,56 @@ Any other `dotnet` command can be run the same way, without installing .NET loca
 docker compose run --rm --no-deps app dotnet <command>
 ```
 
+### Browser-based E2E tests (Playwright)
+
+Starting in Sprint 3, `e2e/` holds a Playwright (TypeScript) test project covering key UI
+flows end-to-end. It's a separate toolchain from the .NET app, and — like everything
+else — runs entirely in Docker; no local Node.js install required. The suite runs against
+the app + Postgres started via this same `docker-compose.yml`, not its own server.
+
+```bash
+# 1. Generate the dev cert (if you haven't already) and start the app + Postgres:
+./scripts/generate-dev-cert.sh
+docker compose up -d --wait db app
+
+# 2. Run the Playwright suite (installs npm deps on first run):
+docker compose run --rm playwright bash -c "npm install && npx playwright test"
+```
+
+The `playwright` compose service's image tag (`mcr.microsoft.com/playwright:v1.48.0-jammy`)
+already ships browsers pre-installed for that exact Playwright version, matching
+`e2e/package.json`'s pinned `@playwright/test` version — so there's no separate browser
+download/install step, and no risk of a client/browser version mismatch.
+
+The suite runs in `Development`-environment sample data (see "Seed data" above) — HR logs
+in as `hr@leaveautopilot.local`, and the negative HR-authorization test uses the seeded
+`alice@leaveautopilot.local` Employee account. Reports/traces from a failed run land in
+`e2e/playwright-report/` (a named Docker volume; see `docker-compose.yml`).
+
+The suite grows every sprint from here (Sprint 4 onward each adds its own spec file to
+`e2e/tests/`) rather than being re-set-up per sprint.
+
 ## Project structure
 
 ```
 LeaveAutopilot.sln
 src/LeaveAutopilot.Web/     ASP.NET Core MVC app, EF Core DbContext, entities, migrations, seed data
 tests/LeaveAutopilot.Tests/ xUnit tests (unit + integration tests against a real Postgres instance)
-docker-compose.yml          Postgres + app dev/build/test container
+e2e/                        Playwright (TypeScript) browser-based E2E tests, run against the docker-compose app + Postgres
+docker-compose.yml          Postgres + app dev/build/test container + Playwright E2E runner
 Dockerfile                  Multi-stage build (SDK -> ASP.NET runtime) for running the app as a container image
 scripts/generate-dev-cert.sh  One-time local HTTPS dev certificate generation
-.github/workflows/ci.yml    CI: build, format check, test (with a Postgres service container)
+.github/workflows/ci.yml    CI: build, format check, unit/integration test, and Playwright E2E jobs
 ```
 
 ## Continuous integration
 
-Every pull request and push to `main` triggers `.github/workflows/ci.yml`, which restores,
-builds, checks formatting, and runs the full test suite against a PostgreSQL service
-container. The check fails on any build error, formatting violation, or test failure.
+Every pull request and push to `main` triggers `.github/workflows/ci.yml`, which runs two jobs:
+
+- **`build-and-test`** — restores, builds, checks formatting, and runs the .NET unit/integration
+  test suite against a PostgreSQL service container.
+- **`playwright`** — builds and starts the app + Postgres via `docker compose`, then runs the
+  Playwright E2E suite headless against it in Docker.
+
+Both jobs must pass; either fails the check on a build error, formatting violation, or test
+failure (unit, integration, or E2E).

@@ -1,0 +1,66 @@
+@model List<LeaveAutopilot.Web.Models.Hr.EmployeeListItemViewModel>
+@{
+    ViewData["Title"] = "Employees";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Employees</h1>
+    <a asp-controller="Hr" asp-action="CreateEmployee" class="btn btn-primary">Create employee</a>
+</div>
+
+@if (TempData["EmployeesSuccess"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Manager</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var employee in Model)
+            {
+                <tr>
+                    <td>@employee.FullName</td>
+                    <td>@employee.Email</td>
+                    <td>@employee.Role</td>
+                    <td>@(employee.ManagerName ?? "—")</td>
+                    <td>
+                        @if (employee.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Deactivated</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a asp-controller="Hr" asp-action="EditEmployee" asp-route-id="@employee.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a asp-controller="Hr" asp-action="EditQuotas" asp-route-id="@employee.Id" class="btn btn-sm btn-outline-primary">Quotas</a>
+                        @if (employee.IsActive)
+                        {
+                            <form asp-controller="Hr" asp-action="DeactivateEmployee" asp-route-id="@employee.Id" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-controller="Hr" asp-action="ReactivateEmployee" asp-route-id="@employee.Id" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-success">Reactivate</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
