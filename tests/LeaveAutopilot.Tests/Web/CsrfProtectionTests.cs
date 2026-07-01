@@ -1,7 +1,11 @@
 using System.Net;
 using LeaveAutopilot.Tests.Infrastructure;
+using LeaveAutopilot.Web.Data;
 using LeaveAutopilot.Web.Models;
+using LeaveAutopilot.Web.Models.Entities;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LeaveAutopilot.Tests.Web;
 
@@ -9,8 +13,8 @@ namespace LeaveAutopilot.Tests.Web;
 /// S2.5-2: every existing form-submission test fetches a valid antiforgery token before
 /// posting, so nothing previously verified that a POST with a missing or invalid
 /// `__RequestVerificationToken` is actually rejected. These tests close that gap for the
-/// three POST actions protected by [ValidateAntiForgeryToken]: /Account/Login,
-/// /Account/Logout, and /Hr/ResetPassword.
+/// POST actions protected by [ValidateAntiForgeryToken]: /Account/Login, /Account/Logout,
+/// /Hr/ResetPassword, and (S5-2) /Approval/Approve and /Approval/Reject.
 /// </summary>
 [Collection(DatabaseCollection.Name)]
 public class CsrfProtectionTests : IClassFixture<WebApplicationFactory<Program>>
@@ -123,5 +127,50 @@ public class CsrfProtectionTests : IClassFixture<WebApplicationFactory<Program>>
         var targetClient = _factory.CreateClient();
         var loginResult = await LoginAsync(targetClient, targetEmail, targetPassword);
         Assert.Contains("Welcome", await loginResult.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task ApprovalApprove_WithMissingAntiForgeryToken_IsRejected_AndRequestStaysPending()
+    {
+        var managerEmail = $"csrf-manager-{Guid.NewGuid():N}@leaveautopilot.local";
+        var employeeEmail = $"csrf-employee-{Guid.NewGuid():N}@leaveautopilot.local";
+        const string password = "Password123!";
+
+        var manager = await TestUserFactory.CreateUserAsync(_factory.Services, managerEmail, password, Roles.Manager);
+        var employee = await TestUserFactory.CreateUserAsync(
+            _factory.Services, employeeEmail, password, Roles.Employee, managerId: manager.Id);
+
+        Guid requestId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var request = new LeaveRequest
+            {
+                Id = Guid.NewGuid(),
+                EmployeeId = employee.Id,
+                LeaveType = LeaveType.Unpaid,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7),
+                ChargeableDays = 1m,
+                State = LeaveRequestState.Pending,
+            };
+            db.LeaveRequests.Add(request);
+            await db.SaveChangesAsync();
+            requestId = request.Id;
+        }
+
+        var client = _factory.CreateClient();
+        await LoginAsync(client, managerEmail, password);
+        await client.GetAsync("/Approval/Index");
+
+        var response = await client.PostAsync(
+            $"/Approval/Approve/{requestId}", new FormUrlEncodedContent(new Dictionary<string, string>()));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var reloaded = await verifyDb.LeaveRequests.SingleAsync(r => r.Id == requestId);
+        Assert.Equal(LeaveRequestState.Pending, reloaded.State);
     }
 }

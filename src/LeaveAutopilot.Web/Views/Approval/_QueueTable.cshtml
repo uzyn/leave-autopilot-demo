@@ -1,0 +1,57 @@
+@model List<LeaveAutopilot.Web.Models.Approval.ApprovalQueueItemViewModel>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Requester</th>
+            <th>Type</th>
+            <th>Dates</th>
+            <th>Days</th>
+            <th>Remaining balance</th>
+            <th>Reason</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="7" class="text-muted">No pending requests.</td>
+            </tr>
+        }
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.RequesterName</td>
+                <td>@item.LeaveType</td>
+                <td>
+                    @item.StartDate.ToString("d")
+                    @if (item.StartHalfDay)
+                    {
+                        <text> (half day)</text>
+                    }
+                    @if (item.EndDate != item.StartDate)
+                    {
+                        <text> - @item.EndDate.ToString("d")</text>
+                        if (item.EndHalfDay)
+                        {
+                            <text> (half day)</text>
+                        }
+                    }
+                </td>
+                <td id="chargeable-days-@item.Id">@item.ChargeableDays.ToString("0.#")</td>
+                <td id="remaining-@item.Id">@(item.RemainingBalance.HasValue ? item.RemainingBalance.Value.ToString("0.#") : "Uncapped")</td>
+                <td>@(item.Reason ?? "—")</td>
+                <td class="text-end">
+                    <form asp-controller="Approval" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                    </form>
+                    <form asp-controller="Approval" asp-action="Reject" asp-route-id="@item.Id" method="post" class="d-inline-flex gap-1 align-items-center">
+                        <input type="text" name="note" class="form-control form-control-sm" style="width: 10rem;" placeholder="Optional note" aria-label="Rejection note" />
+                        <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -33,6 +33,9 @@ public class LeaveRequestListItemViewModel
 
     public string? Reason { get; set; }
 
+    /// <summary>Optional note the decider recorded on rejection (S5-2).</summary>
+    public string? DecisionNote { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
 

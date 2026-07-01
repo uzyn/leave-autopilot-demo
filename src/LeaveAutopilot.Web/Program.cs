@@ -49,6 +49,9 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
 
+// S5-1/S5-2/S5-3: manager approval queue, approve/reject decisions, HR fallback.
+builder.Services.AddScoped<IApprovalService, ApprovalService>();
+
 var app = builder.Build();
 
 // Apply pending migrations and seed the first HR account (and optional sample data) on startup.
