@@ -1,6 +1,7 @@
 using LeaveAutopilot.Web.Data;
 using LeaveAutopilot.Web.Data.Seed;
 using LeaveAutopilot.Web.Models.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,24 @@ builder.Services
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.SlidingExpiration = true;
+});
+
+// S2-2: require authentication by default on every endpoint (controllers opt out with
+// [AllowAnonymous]; role restrictions are added per-controller with [Authorize(Roles = ...)]).
+// This means a newly added controller is secure-by-default even if a role check is
+// forgotten — it will simply require sign-in until an explicit policy is added.
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 
