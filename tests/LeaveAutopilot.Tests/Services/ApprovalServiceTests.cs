@@ -181,6 +181,29 @@ public class ApprovalServiceTests(DatabaseFixture fixture)
         Assert.Equal(14m, remaining); // fully released
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Reject_WithABlankNote_PersistsNullNotEmptyString(string blankNote)
+    {
+        // Mirrors a real browser submission of a blank "Optional note" <input>: the form
+        // posts note="" (or whitespace), not an omitted key. DecisionNote must normalize to
+        // null so Leave/Index.cshtml's `?? "—"` placeholder renders instead of a blank cell.
+        await using var db = await ArrangeDbAsync();
+        var manager = NewUser($"mgr-{Guid.NewGuid():N}@leaveautopilot.local");
+        var employee = NewUser($"emp-{Guid.NewGuid():N}@leaveautopilot.local", manager.Id);
+        db.Users.AddRange(manager, employee);
+        var request = NewRequest(employee.Id);
+        db.LeaveRequests.Add(request);
+        await db.SaveChangesAsync();
+
+        var service = NewService(db);
+        var result = await service.RejectAsync(request.Id, manager.Id, deciderIsHr: false, note: blankNote);
+
+        Assert.True(result.Success);
+        Assert.Null(result.Request!.DecisionNote);
+    }
+
     [Fact]
     public async Task Approve_WhenBalanceNoLongerSufficient_FailsSafely_AndLeavesRequestPending()
     {

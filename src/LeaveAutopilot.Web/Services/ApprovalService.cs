@@ -89,11 +89,20 @@ public class ApprovalService(ApplicationDbContext dbContext, IBalanceService bal
         request.State = approve ? LeaveRequestState.Approved : LeaveRequestState.Rejected;
         request.DecidedByEmployeeId = deciderId;
         request.DecidedAt = timeProvider.GetUtcNow();
-        request.DecisionNote = approve ? null : note;
+        // A real browser submits an empty "note" <input> as "", not an omitted form key.
+        // Normalize to null so Leave/Index.cshtml's `?? "—"` placeholder renders correctly.
+        request.DecisionNote = approve ? null : NormalizeNote(note);
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return approve ? ApprovalDecisionResult.Approved(request) : ApprovalDecisionResult.Rejected(request);
     }
+
+    public async Task<bool> HasReportsAsync(Guid employeeId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Users.AnyAsync(u => u.ManagerId == employeeId, cancellationToken);
+    }
+
+    private static string? NormalizeNote(string? note) => string.IsNullOrWhiteSpace(note) ? null : note;
 }

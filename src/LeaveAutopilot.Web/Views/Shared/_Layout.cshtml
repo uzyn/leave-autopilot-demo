@@ -1,4 +1,17 @@
-﻿<!DOCTYPE html>
+﻿@inject LeaveAutopilot.Web.Services.IApprovalService ApprovalService
+@inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> UserManager
+@{
+    // S5: only show the Approvals link to users who would see a non-empty queue — HR (always
+    // has the fallback queue) or a manager with at least one report. A plain employee with no
+    // reports gets a working link to a page with two empty tables otherwise; server-side
+    // scoping in ApprovalController/ApprovalService is unaffected either way.
+    var showApprovalsLink = false;
+    if (User.Identity?.IsAuthenticated == true)
+    {
+        showApprovalsLink = User.IsInRole(Roles.Hr) || await ApprovalService.HasReportsAsync(Guid.Parse(UserManager.GetUserId(User)!));
+    }
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -33,6 +46,9 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Leave" asp-action="Apply">Apply for leave</a>
                             </li>
+                        }
+                        @if (showApprovalsLink)
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Approval" asp-action="Index">Approvals</a>
                             </li>

@@ -199,6 +199,57 @@ public class ApprovalTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Manager_RejectsWithoutFillingInTheNoteField_PersistsNullNotEmptyString()
+    {
+        // A real browser submits a blank <input type="text" name="note"> as note="", not an
+        // omitted form key. DecideAsync's helper adds the "note" key whenever `note` is
+        // non-null (including ""), which mirrors that real submission — unlike the other
+        // reject tests here, which pass note: null to mirror an omitted key instead.
+        var (managerClient, manager) = await LoginAsNewUserAsync(Roles.Manager);
+        var (employeeClient, employee) = await LoginAsNewUserAsync(Roles.Employee, manager.Id);
+        await SetQuotaAsync(employee.Id, LeaveType.Annual, DateTime.UtcNow.Year, 14m);
+
+        var monday = NextOccurrenceOf(DayOfWeek.Monday);
+        await SubmitApplyAsync(employeeClient, "Annual", monday, monday);
+        var requestId = await GetPendingRequestIdAsync(employee.Id);
+
+        var response = await DecideAsync(managerClient, "Reject", requestId, note: "");
+
+        response.EnsureSuccessStatusCode();
+        var decided = await GetRequestAsync(requestId);
+        Assert.Equal(LeaveRequestState.Rejected, decided.State);
+        Assert.Null(decided.DecisionNote);
+
+        var employeeIndex = await (await employeeClient.GetAsync("/Leave/Index")).Content.ReadAsStringAsync();
+        // Razor HTML-encodes the em-dash placeholder to a numeric character reference (as it
+        // does for the apostrophe elsewhere in this file, e.g. "&#x27;").
+        Assert.Contains($"id=\"decision-note-{requestId}\">&#x2014;<", employeeIndex);
+    }
+
+    [Fact]
+    public async Task ApprovalsNavLink_ShownToManagersAndHr_HiddenFromEmployeesWithNoReports()
+    {
+        var (managerClient, manager) = await LoginAsNewUserAsync(Roles.Manager);
+        var (employeeClient, _) = await LoginAsNewUserAsync(Roles.Employee, managerId: null);
+        var (hrClient, _) = await LoginAsNewUserAsync(Roles.Hr);
+
+        // manager has no reports yet — should not see the link until they do.
+        var managerHomeBefore = await (await managerClient.GetAsync("/")).Content.ReadAsStringAsync();
+        Assert.DoesNotContain("Approvals</a>", managerHomeBefore);
+
+        await LoginAsNewUserAsync(Roles.Employee, manager.Id); // give the manager a report
+
+        var managerHomeAfter = await (await managerClient.GetAsync("/")).Content.ReadAsStringAsync();
+        Assert.Contains("Approvals</a>", managerHomeAfter);
+
+        var employeeHome = await (await employeeClient.GetAsync("/")).Content.ReadAsStringAsync();
+        Assert.DoesNotContain("Approvals</a>", employeeHome);
+
+        var hrHome = await (await hrClient.GetAsync("/")).Content.ReadAsStringAsync();
+        Assert.Contains("Approvals</a>", hrHome);
+    }
+
+    [Fact]
     public async Task Manager_CannotActOnARequestFromAnEmployeeNotAssignedToThem()
     {
         var (managerAClient, managerA) = await LoginAsNewUserAsync(Roles.Manager);

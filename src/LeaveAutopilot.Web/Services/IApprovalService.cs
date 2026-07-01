@@ -28,4 +28,7 @@ public interface IApprovalService
     /// <summary>Rejects a pending request, optionally recording a note. Same eligibility rules as <see cref="ApproveAsync"/>.</summary>
     Task<ApprovalDecisionResult> RejectAsync(
         Guid requestId, Guid deciderId, bool deciderIsHr, string? note, CancellationToken cancellationToken = default);
+
+    /// <summary>Whether <paramref name="employeeId"/> is the assigned manager of at least one employee (i.e. would see a non-empty manager queue).</summary>
+    Task<bool> HasReportsAsync(Guid employeeId, CancellationToken cancellationToken = default);
 }
