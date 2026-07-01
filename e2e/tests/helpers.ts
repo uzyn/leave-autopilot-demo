@@ -22,7 +22,39 @@ export async function loginAsHr(page: Page): Promise<void> {
   await login(page, HR_EMAIL, HR_PASSWORD);
 }
 
+export async function logout(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
+}
+
 /** A unique-per-run suffix so repeated local test runs don't collide on unique emails. */
 export function uniqueSuffix(): string {
   return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
+
+/** Formats a Date as the yyyy-MM-dd string expected by an <input type="date"> field. */
+export function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * The next future occurrence of `dayOfWeek` (0=Sunday..6=Saturday) strictly after today, so
+ * date-based E2E tests are deterministic regardless of what day they happen to run on.
+ */
+export function nextOccurrenceOf(dayOfWeek: number): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let daysToAdd = (dayOfWeek - today.getDay() + 7) % 7;
+  daysToAdd = daysToAdd === 0 ? 7 : daysToAdd;
+  const result = new Date(today);
+  result.setDate(result.getDate() + daysToAdd);
+  return result;
+}
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+export { addDays };
