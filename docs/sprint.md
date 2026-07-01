@@ -32,7 +32,7 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 ---
 
-## Sprint 1 — Foundation & Data Model (Days 1–2.5) [IN PROGRESS]
+## Sprint 1 — Foundation & Data Model (Days 1–2.5) [DONE]
 
 **Goal:** Stand up a running ASP.NET Core app wired to PostgreSQL with the full domain schema, migrations, and seed data — the foundation everything else builds on.
 
@@ -45,10 +45,10 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** ASP.NET Core MVC/Razor Pages project targeting current .NET LTS; EF Core with the Npgsql provider; connection string via configuration/user-secrets; HTTPS redirection and a shared `_Layout`.
 
 **Acceptance criteria:**
-- [ ] Solution builds and runs; a home/landing page renders over HTTPS.
-- [ ] EF Core + Npgsql configured; app connects to a local PostgreSQL instance using a configurable connection string (no secrets committed).
-- [ ] `.gitignore`, solution structure, and a shared responsive layout in place.
-- [ ] README documents how to run the app and point it at PostgreSQL.
+- [x] Solution builds and runs; a home/landing page renders over HTTPS.
+- [x] EF Core + Npgsql configured; app connects to a local PostgreSQL instance using a configurable connection string (no secrets committed).
+- [x] `.gitignore`, solution structure, and a shared responsive layout in place.
+- [x] README documents how to run the app and point it at PostgreSQL.
 
 ### S1-2 — Domain data model & migrations
 
@@ -57,19 +57,19 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** Core entities — `User`/Employee (name, email, role, `ManagerId` self-reference, `IsActive`), `LeavePolicy` (employee × leave type × year × allocated days), `LeaveRequest` (requester, type, start/end dates, start/end half-day flags, computed day count, state, decision metadata: decided-by, decided-at, note, created-at). Leave type is an enum: `Annual`, `Medical`, `Unpaid`. Request state is an enum: `Pending`, `Approved`, `Rejected`, `Cancelled`, `Withdrawn`.
 
 **Acceptance criteria:**
-- [ ] Entities defined with correct relationships (self-referencing manager; policy and request FKs to employee).
-- [ ] EF Core migration created and applies cleanly to an empty database.
-- [ ] Constraints enforced at DB level where sensible (unique employee email; unique policy per employee+type+year; non-negative allocated days).
-- [ ] Enums for leave type and request state persist correctly.
+- [x] Entities defined with correct relationships (self-referencing manager; policy and request FKs to employee).
+- [x] EF Core migration created and applies cleanly to an empty database.
+- [x] Constraints enforced at DB level where sensible (unique employee email; unique policy per employee+type+year; non-negative allocated days).
+- [x] Enums for leave type and request state persist correctly.
 
 ### S1-3 — Seed data & first HR account
 
 *As an operator, I want an initial HR account and sample data so that the app is usable immediately and demoable.*
 
 **Acceptance criteria:**
-- [ ] Seed routine creates one HR user with a known/configurable initial password on first run (idempotent — safe to run repeatedly).
-- [ ] Dev seed optionally creates a few sample employees, a manager, and quotas for local testing.
-- [ ] Seeding is documented and does not run destructively against existing data.
+- [x] Seed routine creates one HR user with a known/configurable initial password on first run (idempotent — safe to run repeatedly).
+- [x] Dev seed optionally creates a few sample employees, a manager, and quotas for local testing.
+- [x] Seeding is documented and does not run destructively against existing data.
 
 ### S1-4 — Continuous integration (GitHub Actions)
 
@@ -78,17 +78,17 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 **Technical context:** GitHub Actions workflow triggered on pull requests (and pushes to `main`): restore/build the solution, run `dotnet test`, and (if practical) spin up PostgreSQL as a service container for integration tests.
 
 **Acceptance criteria:**
-- [ ] `.github/workflows/ci.yml` builds the solution and runs the test suite on every PR.
-- [ ] CI fails the check when a build error or test failure occurs.
-- [ ] Workflow uses a PostgreSQL service container (or equivalent) if any tests need a live database.
+- [x] `.github/workflows/ci.yml` builds the solution and runs the test suite on every PR.
+- [x] CI fails the check when a build error or test failure occurs.
+- [x] Workflow uses a PostgreSQL service container (or equivalent) if any tests need a live database.
 
 **Definition of Done:**
-- [ ] App boots, migrates a fresh DB, seeds the HR account, and serves the landing page over HTTPS.
-- [ ] CI workflow runs on pull requests and passes on this sprint's own PR.
+- [x] App boots, migrates a fresh DB, seeds the HR account, and serves the landing page over HTTPS.
+- [x] CI workflow runs on pull requests and passes on this sprint's own PR.
 
 ---
 
-## Sprint 2 — Authentication & Authorization (Days 2.5–5) [NOT STARTED]
+## Sprint 2 — Authentication & Authorization (Days 2.5–5) [IN PROGRESS]
 
 **Goal:** Users log in/out with email + password, roles are enforced across the app, and HR can reset passwords.
 
@@ -443,8 +443,8 @@ These were open in PRD §11 and are resolved here for v1. Flag if any is wrong b
 
 | Sprint | Days | Focus | Key Output | Status |
 |--------|------|-------|------------|--------|
-| 1 | 1–2.5 | Foundation & data model | Running app + PostgreSQL + schema/migrations + seeded HR | ⬜ |
-| 2 | 2.5–5 | Auth & authorization | Login/logout, roles enforced, HR password reset | ⬜ |
+| 1 | 1–2.5 | Foundation & data model | Running app + PostgreSQL + schema/migrations + seeded HR | ✅ |
+| 2 | 2.5–5 | Auth & authorization | Login/logout, roles enforced, HR password reset | 🟨 |
 | 3 | 5–7.5 | HR administration | Employee CRUD, manager assignment, annual quotas | ⬜ |
 | 4 | 7.5–10 | Leave application & balance engine | Working-day calc, balance reservation, request submission | ⬜ |
 | 5 | 10–12.5 | Approval workflow | Manager queue, approve/reject, HR fallback | ⬜ |
@@ -471,3 +471,19 @@ HR administration (S3) is intentionally **before** leave application (S4): you c
 | Document/attachment uploads (e.g., medical certificates) | Not required for MVP approval flow |
 | Multi-level / delegated approval chains | Single assigned manager (+ HR fallback) is sufficient for a small company |
 | Withdrawal of in-progress/past approved leave | v1 restricts withdrawal to fully-future approved requests |
+
+## Non-blocking Review Backlog
+
+This section collects non-blocking feedback from sprint reviews. Questions need human answers (edit inline). Improvements accumulate until triaged into a sprint.
+
+### Questions
+Items needing human judgment. Answer inline by replacing the `_awaiting answer_` text, then check the box.
+
+_None yet._
+
+### Improvements
+Concrete items with clear implementation direction. Will be triaged into a cleanup sprint periodically.
+
+- [ ] **(Sprint 1)** Parameterize/namespace the `leave-postgres` container name in `docker-compose.yml` — it's currently hardcoded, so a second checkout of the repo (e.g., via `git worktree`, used for parallel branch work) will fail `docker compose up -d db` with a container-name collision. Derive the name from the project/directory or an env var.
+- [ ] **(Sprint 1)** Add test coverage for the `InvalidOperationException` throw paths in `DataSeeder.EnsureRolesAsync`/`EnsureUserAsync`/`EnsurePolicyAsync` (triggered when an ASP.NET Core Identity operation fails) — currently untested; low risk under normal seeded data but worth covering.
+- [ ] **(Sprint 1)** Carry the `Seed:HrPassword` production-override requirement into Sprint 8's security review (S8-2) as an explicit checklist item — `appsettings.json` ships a real default (`ChangeMe123!`) that would create a publicly-known-password HR account if a production deploy forgot to override `Seed__HrPassword`. Currently this is only called out in the README; make sure S8-2 verifies the override actually happens before launch.
