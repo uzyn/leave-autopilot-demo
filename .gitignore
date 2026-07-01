@@ -1,0 +1,14 @@
+## macOS
+.DS_Store
+
+## .NET
+bin/
+obj/
+*.user
+appsettings.*.local.json
+.vs/
+
+## EF Core
+*.db
+*.db-shm
+*.db-wal
