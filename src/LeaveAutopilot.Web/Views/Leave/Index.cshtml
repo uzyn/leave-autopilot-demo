@@ -1,0 +1,88 @@
+@model LeaveAutopilot.Web.Models.Leave.LeaveIndexViewModel
+@{
+    ViewData["Title"] = "My leave";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>My leave</h1>
+    <a asp-controller="Leave" asp-action="Apply" class="btn btn-primary">Apply for leave</a>
+</div>
+
+@if (TempData["LeaveSuccess"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+
+<h2 class="h4">Balances</h2>
+<div class="table-responsive mb-4">
+    <table class="table table-striped align-middle" style="max-width: 40rem;">
+        <thead>
+            <tr>
+                <th>Leave type</th>
+                <th>Allocated (@DateTime.UtcNow.Year)</th>
+                <th>Remaining</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var balance in Model.Balances)
+            {
+                <tr>
+                    <td>@balance.LeaveType</td>
+                    <td>@balance.AllocatedDays.ToString("0.#")</td>
+                    <td id="remaining-@balance.LeaveType">@balance.RemainingDays.ToString("0.#")</td>
+                </tr>
+            }
+            <tr>
+                <td>Unpaid</td>
+                <td colspan="2">Uncapped — no balance tracked</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<h2 class="h4">Your requests</h2>
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Dates</th>
+                <th>Days</th>
+                <th>State</th>
+                <th>Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Requests.Any())
+            {
+                <tr>
+                    <td colspan="5" class="text-muted">No requests yet.</td>
+                </tr>
+            }
+            @foreach (var request in Model.Requests)
+            {
+                <tr>
+                    <td>@request.LeaveType</td>
+                    <td>
+                        @request.StartDate.ToString("d")
+                        @if (request.StartHalfDay)
+                        {
+                            <text> (half day)</text>
+                        }
+                        @if (request.EndDate != request.StartDate)
+                        {
+                            <text> - @request.EndDate.ToString("d")</text>
+                            if (request.EndHalfDay)
+                            {
+                                <text> (half day)</text>
+                            }
+                        }
+                    </td>
+                    <td id="chargeable-days-@request.Id">@request.ChargeableDays.ToString("0.#")</td>
+                    <td id="state-@request.Id"><span class="badge bg-secondary">@request.State</span></td>
+                    <td>@(request.Reason ?? "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

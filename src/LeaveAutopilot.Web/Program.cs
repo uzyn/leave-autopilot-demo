@@ -1,6 +1,7 @@
 using LeaveAutopilot.Web.Data;
 using LeaveAutopilot.Web.Data.Seed;
 using LeaveAutopilot.Web.Models.Entities;
+using LeaveAutopilot.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,11 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
+
+// S4-1/S4-2/S4-3: leave application & balance engine.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IBalanceService, BalanceService>();
+builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
 
 var app = builder.Build();
 
